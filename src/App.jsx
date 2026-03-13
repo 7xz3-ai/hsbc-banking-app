@@ -4,8 +4,7 @@ import {
   ArrowRightLeft, FileText, Plus, ChevronLeft, ChevronRight, CheckCircle2,
   AlertCircle, Globe, Layers, BarChart2, Search, ArrowDown, MoreHorizontal,
   CreditCard as CreditCardIcon, ThumbsUp, ThumbsDown, PieChart, Bell,
-  X, Shield, Smartphone, LogOut, ChevronRight as ChevronR, Toggle,
-  Lock, Settings, Delete
+  X, Shield, Smartphone, LogOut, Lock, Delete
 } from 'lucide-react';
 
 const SnowflakeSVG = ({ size = 24, className = "" }) => (
@@ -115,16 +114,114 @@ const getDisplayDate = (dateStr) => {
   return `${dateStr} 2026`;
 };
 
+const generateConfirmationId = (txId) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'CNF';
+  const seed = parseInt(txId.toString().slice(-6)) || 148047;
+  for (let i = 0; i < 9; i++) result += chars[(seed * (i+7) * 13) % chars.length];
+  return result;
+};
+
+const generatePaymentId = (txId) => {
+  const nums = parseInt(txId.toString().slice(-9)) || 178047833;
+  return `PID${nums}V`;
+};
+
+const generateSortCode = (txId) => {
+  const n = parseInt(txId.toString().slice(-4)) || 1234;
+  const a = String((n % 30) + 1).padStart(2,'0');
+  const b = String((n % 20) + 10).padStart(2,'0');
+  const c = String((n % 40) + 1).padStart(2,'0');
+  return `${a}-${b}-${c}`;
+};
+
+const generateAccountNum = (txId) => {
+  const n = parseInt(txId.toString().slice(-8)) || 49580300;
+  return String(n).padStart(8,'0');
+};
+
 const CORRECT_PIN = '1234';
 
+// Rich payment confirmation card component
+const PaymentConfirmationCard = ({ data }) => (
+  <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm overflow-hidden shadow-sm max-w-[85%]">
+    {/* Header */}
+    <div className="bg-[#db0011] px-4 py-3 flex items-center space-x-2">
+      <div className="w-8 h-8 bg-white rounded flex items-center justify-center shrink-0">
+        <svg viewBox="0 0 200 100" className="w-5 h-4">
+          <polygon points="0,50 50,0 50,100" fill="#db0011"/>
+          <polygon points="200,50 150,0 150,100" fill="#db0011"/>
+          <polygon points="50,0 150,0 100,50" fill="#db0011"/>
+          <polygon points="50,100 150,100 100,50" fill="#db0011"/>
+        </svg>
+      </div>
+      <div>
+        <p className="text-white font-bold text-[13px]">HSBC Customer Service</p>
+        <p className="text-white/70 text-[10px]">Cora – AI Helper</p>
+      </div>
+    </div>
+
+    <div className="p-4">
+      {/* Payment confirmed */}
+      <div className="flex items-center space-x-2 mb-4">
+        <span className="text-green-500 text-[18px]">✅</span>
+        <p className="font-bold text-[#222] text-[15px]">Payment Confirmed</p>
+      </div>
+
+      {/* Payee details */}
+      <p className="text-[11px] font-bold text-gray-500 tracking-wider mb-1">PAYEE DETAILS CONFIRMED:</p>
+      <div className="border-t border-gray-200 pt-2 mb-3 space-y-1">
+        {[
+          { label: 'Name', value: data.payeeName },
+          { label: 'Account Number', value: data.accountNum },
+          { label: 'Sort Code', value: data.sortCode },
+          { label: 'Payment Reference', value: data.reference || 'N/A' },
+          { label: 'Payment Identity Number', value: data.paymentId },
+        ].map(row => (
+          <p key={row.label} className="text-[12px] text-[#222]">
+            <span className="text-gray-500">{row.label}:</span> <span className="font-semibold">{row.value}</span>
+          </p>
+        ))}
+      </div>
+
+      {/* Payment summary */}
+      <p className="text-[11px] font-bold text-gray-500 tracking-wider mb-1">PAYMENT SUMMARY:</p>
+      <div className="border-t border-gray-200 pt-2 mb-3 space-y-1">
+        {[
+          { label: 'Amount', value: `£${Math.abs(data.amount).toFixed(2)}` },
+          { label: 'Date', value: `${data.date} at ${data.time}` },
+          { label: 'Confirmation ID', value: data.confirmationId },
+          { label: 'Status', value: '✅ SUCCESSFUL' },
+        ].map(row => (
+          <p key={row.label} className="text-[12px] text-[#222]">
+            <span className="text-gray-500">{row.label}:</span> <span className="font-semibold">{row.value}</span>
+          </p>
+        ))}
+      </div>
+
+      {/* Important notice */}
+      <div className="bg-[#fffbea] border border-yellow-200 rounded-xl p-3 mb-3">
+        <p className="text-[11px] font-bold text-[#222] mb-1">⚠️ IMPORTANT NOTICE:</p>
+        <p className="text-[11px] text-gray-600 leading-relaxed">
+          Your payment has been processed successfully. Please note it can take up to 2 hours to appear in the recipient's account. If the recipient reports any delays, please reference Payment ID: <span className="font-bold">{data.paymentId}</span>.
+        </p>
+      </div>
+
+      <p className="text-[12px] text-gray-500 italic">Need anything else regarding this payment?</p>
+    </div>
+
+    <div className="px-4 pb-3">
+      <p className="text-[10px] text-right text-gray-400">{data.time}</p>
+    </div>
+  </div>
+);
+
 export default function App() {
-  // ── App state ──
-  const [appState, setAppState] = useState('login'); // 'login' | 'app'
+  const [appState, setAppState] = useState('login');
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
   const [pinShake, setPinShake] = useState(false);
 
-  // ── App navigation ──
   const [activeNav, setActiveNav] = useState('accounts');
   const [activeTopTab, setActiveTopTab] = useState('Home');
   const [selectedAccountId, setSelectedAccountId] = useState(null);
@@ -137,7 +234,6 @@ export default function App() {
   const [merchantFeedback, setMerchantFeedback] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Profile toggles
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [faceIdEnabled, setFaceIdEnabled] = useState(true);
   const [marketingEnabled, setMarketingEnabled] = useState(false);
@@ -149,24 +245,21 @@ export default function App() {
   ]);
 
   const [transactions, setTransactions] = useState([
-    { id: 'tx_1', date: 'Today',     time: '14:30', desc: "Sainsbury's",    category: 'Groceries',    amount: -30.00,  iconType: 'sainsburys' },
-    { id: 'tx_2', date: 'Today',     time: '08:15', desc: "TFL Travel Charge", category: 'Travel',   amount: -6.80,   iconType: 'tfl' },
-    { id: 'tx_3', date: 'Yesterday', time: '19:45', desc: "Deliveroo",      category: 'Dining',       amount: -24.50,  iconType: 'deliveroo' },
-    { id: 'tx_4', date: 'Mar 10',    time: '21:00', desc: "Adobe",          category: 'Subscription', amount: -15.00,  iconType: 'adobe' },
-    { id: 'tx_5', date: 'Mar 10',    time: '15:00', desc: "Joanne",         category: 'Income',       amount: 100.00,  iconType: 'income' },
-    { id: 'tx_6', date: 'Mar 10',    time: '12:00', desc: "Nike",           category: 'Apparel',      amount: -150.00, iconType: 'nike' },
-    { id: 'tx_7', date: 'Mar 8',     time: '18:30', desc: "Uber",           category: 'Travel',       amount: -12.00,  iconType: 'uber' },
-    { id: 'tx_8', date: 'Mar 8',     time: '13:00', desc: "Tesco Extra",    category: 'Groceries',    amount: -45.20,  iconType: 'tesco' },
+    { id: 'tx_1', date: 'Today',     time: '14:30', desc: "Sainsbury's",       category: 'Groceries',    amount: -30.00,  iconType: 'sainsburys' },
+    { id: 'tx_2', date: 'Today',     time: '08:15', desc: "TFL Travel Charge", category: 'Travel',       amount: -6.80,   iconType: 'tfl' },
+    { id: 'tx_3', date: 'Yesterday', time: '19:45', desc: "Deliveroo",         category: 'Dining',       amount: -24.50,  iconType: 'deliveroo' },
+    { id: 'tx_4', date: 'Mar 10',    time: '21:00', desc: "Adobe",             category: 'Subscription', amount: -15.00,  iconType: 'adobe' },
+    { id: 'tx_5', date: 'Mar 10',    time: '15:00', desc: "Joanne",            category: 'Income',       amount: 100.00,  iconType: 'income' },
+    { id: 'tx_6', date: 'Mar 10',    time: '12:00', desc: "Nike",              category: 'Apparel',      amount: -150.00, iconType: 'nike' },
+    { id: 'tx_7', date: 'Mar 8',     time: '18:30', desc: "Uber",              category: 'Travel',       amount: -12.00,  iconType: 'uber' },
+    { id: 'tx_8', date: 'Mar 8',     time: '13:00', desc: "Tesco Extra",       category: 'Groceries',    amount: -45.20,  iconType: 'tesco' },
   ]);
 
-  // ── Notifications derived from transactions ──
   const [readNotifIds, setReadNotifIds] = useState([]);
-  const notifications = transactions.slice(0, 6).map(tx => ({
+  const notifications = transactions.slice(0,6).map(tx => ({
     id: tx.id,
-    title: tx.amount > 0 ? `Money received` : `Payment made`,
-    body: tx.amount > 0
-      ? `£${Math.abs(tx.amount).toFixed(2)} received from ${tx.desc}`
-      : `£${Math.abs(tx.amount).toFixed(2)} paid to ${tx.desc}`,
+    title: tx.amount > 0 ? 'Money received' : 'Payment made',
+    body: tx.amount > 0 ? `£${Math.abs(tx.amount).toFixed(2)} received from ${tx.desc}` : `£${Math.abs(tx.amount).toFixed(2)} paid to ${tx.desc}`,
     time: `${tx.date}, ${tx.time}`,
     icon: tx.iconType,
     desc: tx.desc,
@@ -189,14 +282,15 @@ export default function App() {
   const [payAmount, setPayAmount] = useState('');
   const [payRef, setPayRef] = useState('');
   const [paymentError, setPaymentError] = useState('');
+
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const [chatMessages, setChatMessages] = useState([
-    { id: 'msg_1', sender: 'bot', text: 'Hi, I am your HSBC digital assistant. How can I help you today?', time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) }
+    { id: 'msg_1', sender: 'bot', type: 'text', text: 'Hi, I\'m Cora, your HSBC digital assistant. I can help you confirm payments, check your balance, or answer account questions. How can I help you today?', time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) }
   ]);
 
-  // ── PIN handlers ──
+  // PIN
   const handlePinPress = (digit) => {
     if (pin.length >= 4) return;
     const newPin = pin + digit;
@@ -211,10 +305,9 @@ export default function App() {
       }
     }
   };
+  const handlePinDelete = () => setPin(p => p.slice(0,-1));
 
-  const handlePinDelete = () => setPin(p => p.slice(0, -1));
-
-  // ── Payment handlers ──
+  // Payment
   const handleSortCodeChange = (e) => {
     let val = e.target.value.replace(/\D/g,'');
     if (val.length > 6) val = val.slice(0,6);
@@ -223,13 +316,11 @@ export default function App() {
     if (val.length > 4) f = `${val.slice(0,2)}-${val.slice(2,4)}-${val.slice(4)}`;
     setSortCode(f);
   };
-
   const handleAccountNumChange = (e) => {
     let val = e.target.value.replace(/\D/g,'');
     if (val.length > 8) val = val.slice(0,8);
     setAccountNumber(val);
   };
-
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
     setPaymentError('');
@@ -242,10 +333,13 @@ export default function App() {
     const newAccounts = [...accounts];
     newAccounts[0].balance -= amountNum;
     setAccounts(newAccounts);
+    const txId = Date.now().toString();
+    const now = new Date();
     const newTx = {
-      id: Date.now().toString(), date: 'Today',
-      time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-      desc: payeeName, category: 'Transfer', amount: -amountNum, iconType: 'transfer'
+      id: txId, date: 'Today',
+      time: now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+      desc: payeeName, category: 'Transfer', amount: -amountNum,
+      iconType: 'transfer', sortCode, accountNumber, reference: payRef
     };
     setTransactions(prev => [newTx, ...prev]);
     setPaymentSuccess(true);
@@ -260,26 +354,68 @@ export default function App() {
     if (activeNav === 'support') messagesEndRef.current?.scrollIntoView({behavior:'smooth'});
   }, [chatMessages, isTyping, activeNav]);
 
+  // Smart bot response
   const getBotResponse = (input) => {
     const l = input.toLowerCase();
-    if (l.includes('payment')||l.includes('go through')||l.includes('gone through')||l.includes('sent')||l.includes('receive')||l.includes('transfer'))
-      return "Yes, I can confirm that the payment has gone through successfully. Please note that it can take up to 2 hours to reflect in the recipient's account.";
-    if (l.match(/\b(hi|hello|hey)\b/)) return "Hello! How can I help you with your banking today?";
-    if (l.includes('balance')) return `Your Current Account balance is £${accounts[0].balance.toLocaleString('en-GB',{minimumFractionDigits:2})}.`;
-    return "I can help confirm if your recent payments have gone through, or answer general account questions. What would you like to check?";
+
+    // Payment confirmation — find the most recent outgoing transfer
+    const isAskingAboutPayment =
+      l.includes('payment') || l.includes('confirm') || l.includes('go through') ||
+      l.includes('gone through') || l.includes('sent') || l.includes('transfer') ||
+      l.includes('did it') || l.includes('paid') || l.includes('successful');
+
+    if (isAskingAboutPayment) {
+      // Try to find the most recent transfer first, then any outgoing payment
+      const recentTransfer = transactions.find(tx => tx.iconType === 'transfer') ||
+                             transactions.find(tx => tx.amount < 0);
+
+      if (recentTransfer) {
+        const txId = recentTransfer.id;
+        const confirmationData = {
+          payeeName: recentTransfer.desc,
+          accountNum: recentTransfer.accountNumber || generateAccountNum(txId),
+          sortCode: recentTransfer.sortCode || generateSortCode(txId),
+          reference: recentTransfer.reference || recentTransfer.category,
+          paymentId: generatePaymentId(txId),
+          amount: recentTransfer.amount,
+          date: getDisplayDate(recentTransfer.date),
+          time: recentTransfer.time,
+          confirmationId: generateConfirmationId(txId),
+        };
+        return { type: 'payment_confirmation', data: confirmationData };
+      }
+
+      return { type: 'text', text: "I don't see any recent payments on your account. If you've just made a payment, please allow a moment and try again." };
+    }
+
+    if (l.match(/\b(hi|hello|hey)\b/)) return { type: 'text', text: "Hello! How can I help you with your banking today? I can confirm payments, check your balance, or help with account queries." };
+    if (l.includes('balance')) return { type: 'text', text: `Your Current Account balance is £${accounts[0].balance.toLocaleString('en-GB',{minimumFractionDigits:2})}. Your Rewards Credit Card has an outstanding balance of £${Math.abs(accounts[2].balance).toFixed(2)}.` };
+    if (l.includes('account')) return { type: 'text', text: "You have 3 accounts: Current Account (40-47-59 12345678), Online Bonus Saver, and a Rewards Credit Card ending in 5432. Which would you like to know more about?" };
+    if (l.includes('card') || l.includes('frozen') || l.includes('freeze')) return { type: 'text', text: "Your Rewards Credit Card ending in 5432 is currently frozen. You can unfreeze it at any time from the Cards section. Would you like help with anything else?" };
+    if (l.includes('help') || l.includes('what can you do')) return { type: 'text', text: "I can help you with:\n• Confirming recent payments\n• Checking account balances\n• Card queries (freeze/unfreeze)\n• General account information\n\nWhat would you like help with?" };
+
+    return { type: 'text', text: "I'm here to help with your banking. You can ask me to confirm a payment, check your balance, or help with account queries. What would you like to know?" };
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
     const timeString = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    setChatMessages(prev=>[...prev,{id:Date.now().toString(),sender:'user',text:chatInput,time:timeString}]);
-    const responseText = getBotResponse(chatInput);
+    setChatMessages(prev=>[...prev,{id:Date.now().toString(),sender:'user',type:'text',text:chatInput,time:timeString}]);
+    const response = getBotResponse(chatInput);
     setChatInput(''); setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      setChatMessages(prev=>[...prev,{id:(Date.now()+1).toString(),sender:'bot',text:responseText,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}]);
-    }, 1200);
+      const botMsg = {
+        id: (Date.now()+1).toString(),
+        sender: 'bot',
+        type: response.type || 'text',
+        text: response.text || '',
+        richData: response.data || null,
+        time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
+      };
+      setChatMessages(prev=>[...prev, botMsg]);
+    }, 1400);
   };
 
   const sourceBalance = accounts[0].balance;
@@ -292,7 +428,7 @@ export default function App() {
   const availCreditFmt = formatLargeNumber(availableCredit);
   const creditLimitFmt = formatLargeNumber(creditAccount.creditLimit);
 
-  // ── Transaction Detail ──
+  // Transaction detail
   const TransactionDetail = ({ tx, onBack }) => {
     const merchant = getMerchantInfo(tx.iconType, tx.desc);
     const feedback = merchantFeedback[tx.id];
@@ -318,9 +454,7 @@ export default function App() {
         </div>
         <div className="mx-5 mt-4 bg-[#f8f8f8] rounded-2xl flex items-center justify-between px-4 py-4 cursor-pointer">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
-              <PieChart size={20} className="text-[#db0011]"/>
-            </div>
+            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm"><PieChart size={20} className="text-[#db0011]"/></div>
             <div>
               <p className="font-bold text-[#222] text-[15px]">Spending insights</p>
               <p className="text-[12px] text-gray-500 mt-0.5">Get a better overview of your spending habits.</p>
@@ -328,7 +462,7 @@ export default function App() {
           </div>
           <ArrowRight size={20} className="text-gray-400 shrink-0"/>
         </div>
-        <div className="mx-5 mt-5 space-y-0 rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+        <div className="mx-5 mt-5 rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
           <div className="px-5 py-4 border-b border-gray-100">
             <p className="text-[12px] text-gray-500 font-medium mb-1">Transaction reference</p>
             <p className="text-[15px] font-bold text-[#222]">{merchant.ref}</p>
@@ -359,8 +493,8 @@ export default function App() {
           <div className="mx-5 mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
             <p className="text-[15px] font-bold text-[#222]">Are the merchant details correct?</p>
             <div className="flex space-x-4">
-              <button onClick={()=>setMerchantFeedback(p=>({...p,[tx.id]:'up'}))} className={`p-2 rounded-full ${feedback==='up'?'text-[#00a651]':'text-gray-400'}`}><ThumbsUp size={22} strokeWidth={2}/></button>
-              <button onClick={()=>setMerchantFeedback(p=>({...p,[tx.id]:'down'}))} className={`p-2 rounded-full ${feedback==='down'?'text-[#db0011]':'text-gray-400'}`}><ThumbsDown size={22} strokeWidth={2}/></button>
+              <button onClick={()=>setMerchantFeedback(p=>({...p,[tx.id]:'up'}))} className={`p-2 rounded-full ${merchantFeedback[tx.id]==='up'?'text-[#00a651]':'text-gray-400'}`}><ThumbsUp size={22} strokeWidth={2}/></button>
+              <button onClick={()=>setMerchantFeedback(p=>({...p,[tx.id]:'down'}))} className={`p-2 rounded-full ${merchantFeedback[tx.id]==='down'?'text-[#db0011]':'text-gray-400'}`}><ThumbsDown size={22} strokeWidth={2}/></button>
             </div>
           </div>
         )}
@@ -368,9 +502,7 @@ export default function App() {
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 rounded-full bg-[#fff0f0] flex items-center justify-center relative">
               <FileText size={20} className="text-[#222]"/>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#db0011] rounded-full flex items-center justify-center">
-                <span className="text-white text-[10px] font-bold">!</span>
-              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#db0011] rounded-full flex items-center justify-center"><span className="text-white text-[10px] font-bold">!</span></div>
             </div>
             <p className="text-[15px] font-bold text-[#222]">Query this transaction</p>
           </div>
@@ -380,106 +512,75 @@ export default function App() {
     );
   };
 
-  // ── PIN / Login Screen ──
+  // Login screen
   if (appState === 'login') {
     const pinKeys = ['1','2','3','4','5','6','7','8','9','','0','del'];
     return (
       <div className="flex justify-center items-start sm:items-center min-h-screen bg-[#e5e5e5] sm:p-8 font-sans">
         <div className="w-full sm:max-w-[400px] h-screen sm:h-[850px] sm:max-h-[90vh] bg-[#db0011] sm:rounded-[2.5rem] sm:shadow-2xl overflow-hidden flex flex-col relative sm:border-[12px] sm:border-[#222]">
           <div className="hidden sm:block absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"></div>
-
-          {/* Top area */}
           <div className="flex flex-col items-center justify-center flex-1 pt-16 pb-4">
             <HSBCLogoWhite/>
             <p className="text-white/80 text-[13px] font-semibold mt-2 tracking-widest uppercase">Mobile Banking</p>
-
             <div className="mt-14 mb-3">
               <p className="text-white text-[17px] font-semibold text-center">Good {new Date().getHours()<12?'morning':new Date().getHours()<18?'afternoon':'evening'}, Alex</p>
               <p className="text-white/70 text-[13px] text-center mt-1">Enter your PIN to continue</p>
             </div>
-
-            {/* PIN dots */}
-            <div className={`flex space-x-5 mt-6 ${pinShake ? 'animate-shake' : ''}`}>
-              {[0,1,2,3].map(i => (
-                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${pin.length > i ? 'bg-white border-white' : 'bg-transparent border-white/60'}`}/>
+            <div className={`flex space-x-5 mt-6 ${pinShake?'animate-shake':''}`}>
+              {[0,1,2,3].map(i=>(
+                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${pin.length>i?'bg-white border-white':'bg-transparent border-white/60'}`}/>
               ))}
             </div>
-
-            {pinError && (
-              <p className="text-white/90 text-[13px] mt-3 bg-white/20 px-4 py-1.5 rounded-full">Incorrect PIN. Please try again.</p>
-            )}
+            {pinError && <p className="text-white/90 text-[13px] mt-3 bg-white/20 px-4 py-1.5 rounded-full">Incorrect PIN. Please try again.</p>}
             <p className="text-white/50 text-[11px] mt-2">Hint: 1234</p>
           </div>
-
-          {/* PIN pad */}
           <div className="px-8 pb-12 pt-2">
             <div className="grid grid-cols-3 gap-3">
-              {pinKeys.map((key, i) => {
-                if (key === '') return <div key={i}/>;
-                if (key === 'del') return (
-                  <button key={i} onClick={handlePinDelete} className="h-16 flex items-center justify-center text-white active:opacity-60 transition-opacity">
+              {pinKeys.map((key,i)=>{
+                if (key==='') return <div key={i}/>;
+                if (key==='del') return (
+                  <button key={i} onClick={handlePinDelete} className="h-16 flex items-center justify-center text-white active:opacity-60">
                     <Delete size={26} strokeWidth={1.5}/>
                   </button>
                 );
                 return (
-                  <button
-                    key={i}
-                    onClick={() => handlePinPress(key)}
-                    className="h-16 rounded-2xl bg-white/15 active:bg-white/30 transition-colors flex flex-col items-center justify-center text-white"
-                  >
+                  <button key={i} onClick={()=>handlePinPress(key)} className="h-16 rounded-2xl bg-white/15 active:bg-white/30 transition-colors flex flex-col items-center justify-center text-white">
                     <span className="text-[24px] font-light leading-none">{key}</span>
-                    <span className="text-[8px] tracking-widest text-white/50 mt-0.5">
-                      {['','ABC','DEF','GHI','JKL','MNO','PQRS','TUV','WXYZ','','',''][i]}
-                    </span>
+                    <span className="text-[8px] tracking-widest text-white/50 mt-0.5">{['','ABC','DEF','GHI','JKL','MNO','PQRS','TUV','WXYZ','','',''][i]}</span>
                   </button>
                 );
               })}
             </div>
             <button className="w-full mt-5 text-white/60 text-[13px] font-medium text-center">Forgotten your PIN?</button>
           </div>
-
-          <style dangerouslySetInnerHTML={{__html:`
-            @keyframes shake {
-              0%,100%{transform:translateX(0)}
-              20%{transform:translateX(-8px)}
-              40%{transform:translateX(8px)}
-              60%{transform:translateX(-8px)}
-              80%{transform:translateX(4px)}
-            }
-            .animate-shake { animation: shake 0.5s ease-in-out; }
-          `}}/>
+          <style dangerouslySetInnerHTML={{__html:`@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-8px)}80%{transform:translateX(4px)}}.animate-shake{animation:shake 0.5s ease-in-out}`}}/>
         </div>
       </div>
     );
   }
 
-  // ── Main App ──
   return (
     <div className="flex justify-center items-start sm:items-center min-h-screen bg-[#e5e5e5] sm:p-8 font-sans">
       <div className="w-full sm:max-w-[400px] h-screen sm:h-[850px] sm:max-h-[90vh] bg-[#f8f8f8] sm:rounded-[2.5rem] sm:shadow-2xl overflow-hidden flex flex-col relative sm:border-[12px] sm:border-[#222]">
         <div className="hidden sm:block absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"></div>
 
-        {/* ── NOTIFICATIONS PANEL OVERLAY ── */}
+        {/* NOTIFICATIONS */}
         {showNotifications && (
           <div className="absolute inset-0 z-[100] flex flex-col">
             <div className="absolute inset-0 bg-black/40" onClick={()=>setShowNotifications(false)}/>
             <div className="relative mt-20 mx-3 bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in max-h-[75%] flex flex-col">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 className="font-bold text-[#222] text-[17px]">Notifications</h2>
-                <button onClick={()=>{ setShowNotifications(false); setReadNotifIds(notifications.map(n=>n.id)); }} className="text-[13px] font-bold text-[#db0011]">Mark all read</button>
+                <button onClick={()=>{setShowNotifications(false);setReadNotifIds(notifications.map(n=>n.id));}} className="text-[13px] font-bold text-[#db0011]">Mark all read</button>
               </div>
               <div className="overflow-y-auto hide-scrollbar">
-                {notifications.map(n => (
-                  <div
-                    key={n.id}
-                    onClick={()=>setReadNotifIds(p=>[...new Set([...p,n.id])])}
-                    className={`flex items-start space-x-3 px-5 py-4 border-b border-gray-50 cursor-pointer active:bg-gray-50 ${!readNotifIds.includes(n.id)?'bg-[#fff5f5]':'bg-white'}`}
-                  >
+                {notifications.map(n=>(
+                  <div key={n.id} onClick={()=>setReadNotifIds(p=>[...new Set([...p,n.id])])} className={`flex items-start space-x-3 px-5 py-4 border-b border-gray-50 cursor-pointer active:bg-gray-50 ${!readNotifIds.includes(n.id)?'bg-[#fff5f5]':'bg-white'}`}>
                     <div className="shrink-0 mt-0.5"><TxIcon type={n.icon} desc={n.desc}/></div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="font-bold text-[#222] text-[14px]">{n.title}</p>
-                        {!readNotifIds.includes(n.id) && <div className="w-2 h-2 rounded-full bg-[#db0011] shrink-0 ml-2"/>}
+                        {!readNotifIds.includes(n.id)&&<div className="w-2 h-2 rounded-full bg-[#db0011] shrink-0 ml-2"/>}
                       </div>
                       <p className="text-[13px] text-gray-600 mt-0.5">{n.body}</p>
                       <p className="text-[11px] text-gray-400 mt-1">{n.time}</p>
@@ -491,7 +592,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ── PROFILE / SETTINGS OVERLAY ── */}
+        {/* PROFILE */}
         {showProfile && (
           <div className="absolute inset-0 z-[90] bg-[#f8f8f8] flex flex-col animate-fade-in">
             <div className="flex items-center justify-between px-5 pt-14 pb-4 bg-white border-b border-gray-100">
@@ -500,7 +601,6 @@ export default function App() {
               <div className="w-10"/>
             </div>
             <div className="flex-1 overflow-y-auto hide-scrollbar pb-10">
-              {/* Avatar */}
               <div className="bg-white px-6 py-6 flex items-center space-x-4 border-b border-gray-100">
                 <div className="w-16 h-16 rounded-full bg-[#db0011] flex items-center justify-center text-white text-[22px] font-bold shadow-md">AC</div>
                 <div>
@@ -509,55 +609,41 @@ export default function App() {
                   <p className="text-[12px] text-[#db0011] font-bold mt-1">Premier Account</p>
                 </div>
               </div>
-
-              {/* Account info */}
               <div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                 <p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Account Details</p>
-                {[
-                  { label: 'Sort code', value: '40-47-59' },
-                  { label: 'Account number', value: '12345678' },
-                  { label: 'Customer number', value: '•••••••91' },
-                  { label: 'Email', value: 'a.chan@email.com' },
-                ].map((row, i, arr) => (
-                  <div key={row.label} className={`flex justify-between items-center px-5 py-3.5 ${i < arr.length-1 ? 'border-b border-gray-100' : ''}`}>
+                {[{label:'Sort code',value:'40-47-59'},{label:'Account number',value:'12345678'},{label:'Customer number',value:'•••••••91'},{label:'Email',value:'a.chan@email.com'}].map((row,i,arr)=>(
+                  <div key={row.label} className={`flex justify-between items-center px-5 py-3.5 ${i<arr.length-1?'border-b border-gray-100':''}`}>
                     <span className="text-[14px] text-gray-500">{row.label}</span>
                     <span className="text-[14px] font-bold text-[#222]">{row.value}</span>
                   </div>
                 ))}
               </div>
-
-              {/* Security toggles */}
               <div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                 <p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security & Preferences</p>
                 {[
-                  { label: 'Transaction notifications', sub: 'Get alerts for every payment', val: notifEnabled, set: setNotifEnabled },
-                  { label: 'Face ID / Fingerprint', sub: 'Log in using biometrics', val: faceIdEnabled, set: setFaceIdEnabled },
-                  { label: 'Marketing preferences', sub: 'Receive offers and updates', val: marketingEnabled, set: setMarketingEnabled },
-                ].map((row, i, arr) => (
-                  <div key={row.label} className={`flex items-center justify-between px-5 py-3.5 ${i < arr.length-1 ? 'border-b border-gray-100' : ''}`}>
+                  {label:'Transaction notifications',sub:'Get alerts for every payment',val:notifEnabled,set:setNotifEnabled},
+                  {label:'Face ID / Fingerprint',sub:'Log in using biometrics',val:faceIdEnabled,set:setFaceIdEnabled},
+                  {label:'Marketing preferences',sub:'Receive offers and updates',val:marketingEnabled,set:setMarketingEnabled},
+                ].map((row,i,arr)=>(
+                  <div key={row.label} className={`flex items-center justify-between px-5 py-3.5 ${i<arr.length-1?'border-b border-gray-100':''}`}>
                     <div>
                       <p className="text-[14px] font-bold text-[#222]">{row.label}</p>
                       <p className="text-[12px] text-gray-400 mt-0.5">{row.sub}</p>
                     </div>
-                    <button
-                      onClick={()=>row.set(!row.val)}
-                      className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${row.val?'bg-[#db0011]':'bg-gray-300'}`}
-                    >
+                    <button onClick={()=>row.set(!row.val)} className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${row.val?'bg-[#db0011]':'bg-gray-300'}`}>
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${row.val?'translate-x-7':'translate-x-1'}`}/>
                     </button>
                   </div>
                 ))}
               </div>
-
-              {/* Security links */}
               <div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                 <p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security</p>
                 {[
-                  { icon: <Lock size={18} className="text-[#db0011]"/>, label: 'Change PIN' },
-                  { icon: <Smartphone size={18} className="text-[#db0011]"/>, label: 'Manage devices' },
-                  { icon: <Shield size={18} className="text-[#db0011]"/>, label: 'Security centre' },
-                ].map((row, i, arr) => (
-                  <div key={row.label} className={`flex items-center justify-between px-5 py-4 cursor-pointer active:bg-gray-50 ${i < arr.length-1 ? 'border-b border-gray-100' : ''}`}>
+                  {icon:<Lock size={18} className="text-[#db0011]"/>,label:'Change PIN'},
+                  {icon:<Smartphone size={18} className="text-[#db0011]"/>,label:'Manage devices'},
+                  {icon:<Shield size={18} className="text-[#db0011]"/>,label:'Security centre'},
+                ].map((row,i,arr)=>(
+                  <div key={row.label} className={`flex items-center justify-between px-5 py-4 cursor-pointer active:bg-gray-50 ${i<arr.length-1?'border-b border-gray-100':''}`}>
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 rounded-full bg-[#fff0f0] flex items-center justify-center">{row.icon}</div>
                       <span className="text-[14px] font-bold text-[#222]">{row.label}</span>
@@ -566,13 +652,8 @@ export default function App() {
                   </div>
                 ))}
               </div>
-
-              {/* Log out */}
               <div className="mx-4 mt-5">
-                <button
-                  onClick={()=>{ setShowProfile(false); setAppState('login'); setPin(''); }}
-                  className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex items-center justify-center space-x-2 shadow-sm active:bg-gray-50"
-                >
+                <button onClick={()=>{setShowProfile(false);setAppState('login');setPin('');}} className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex items-center justify-center space-x-2 shadow-sm active:bg-gray-50">
                   <LogOut size={18} className="text-[#db0011]"/>
                   <span className="text-[15px] font-bold text-[#db0011]">Log out</span>
                 </button>
@@ -581,7 +662,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ── MAIN SCROLLABLE CONTENT ── */}
         <main className="flex-1 overflow-y-auto hide-scrollbar relative pb-20 flex flex-col bg-[#f8f8f8]">
 
           {/* ACCOUNTS */}
@@ -592,47 +672,32 @@ export default function App() {
               ) : selectedAccountId ? (
                 <div className="animate-fade-in bg-white min-h-full pb-10">
                   <div className="flex items-center px-4 pt-14 pb-4 bg-white sticky top-0 z-40">
-                    <button onClick={()=>{ setSelectedAccountId(null); setSearchQuery(''); }} className="p-2 -ml-2 text-[#db0011] flex items-center">
-                      <ChevronLeft size={28} strokeWidth={3}/>
-                    </button>
+                    <button onClick={()=>{setSelectedAccountId(null);setSearchQuery('');}} className="p-2 -ml-2 text-[#db0011] flex items-center"><ChevronLeft size={28} strokeWidth={3}/></button>
                     <h1 className="text-[20px] font-bold text-[#222] ml-1">Transactions</h1>
                   </div>
-                  {/* WORKING SEARCH */}
                   <div className="px-5 mb-6 mt-1">
                     <div className="bg-[#f4f5f7] rounded-[14px] flex items-center px-4 py-3">
                       <Search size={20} className="text-gray-400 mr-3 shrink-0"/>
-                      <input
-                        type="text"
-                        placeholder="Search transactions"
-                        className="bg-transparent focus:outline-none w-full text-[15px] text-[#222] placeholder-gray-400 font-medium"
-                        value={searchQuery}
-                        onChange={e=>setSearchQuery(e.target.value)}
-                      />
-                      {searchQuery && (
-                        <button onClick={()=>setSearchQuery('')} className="text-gray-400 ml-2"><X size={16}/></button>
-                      )}
+                      <input type="text" placeholder="Search transactions" className="bg-transparent focus:outline-none w-full text-[15px] text-[#222] placeholder-gray-400 font-medium" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/>
+                      {searchQuery && <button onClick={()=>setSearchQuery('')} className="text-gray-400 ml-2"><X size={16}/></button>}
                     </div>
-                    {searchQuery && (
-                      <p className="text-[12px] text-gray-400 mt-2 px-1">
-                        {groupedTransactions.reduce((a,g)=>a+g.items.length,0)} result{groupedTransactions.reduce((a,g)=>a+g.items.length,0)!==1?'s':''} for "{searchQuery}"
-                      </p>
-                    )}
+                    {searchQuery && <p className="text-[12px] text-gray-400 mt-2 px-1">{groupedTransactions.reduce((a,g)=>a+g.items.length,0)} result{groupedTransactions.reduce((a,g)=>a+g.items.length,0)!==1?'s':''} for "{searchQuery}"</p>}
                   </div>
                   <div>
                     {groupedTransactions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-20 text-center px-8">
                         <Search size={40} className="text-gray-200 mb-4"/>
                         <p className="font-bold text-[#222] text-[16px]">No transactions found</p>
-                        <p className="text-gray-400 text-[13px] mt-1">Try searching for a merchant name, category or amount</p>
+                        <p className="text-gray-400 text-[13px] mt-1">Try searching for a merchant, category or amount</p>
                       </div>
-                    ) : groupedTransactions.map(group => (
+                    ) : groupedTransactions.map(group=>(
                       <div key={group.date} className="mb-6">
                         <div className="flex justify-between items-center px-5 mb-3">
                           <h2 className="font-bold text-[#222] text-[16px]">{group.date}</h2>
                           <span className="font-bold text-gray-500 text-[15px]">£{Math.abs(group.total).toFixed(2)}</span>
                         </div>
                         <div className="px-5 space-y-2">
-                          {group.items.map(tx => (
+                          {group.items.map(tx=>(
                             <div key={tx.id} onClick={()=>setSelectedTransaction(tx)} className="bg-[#f4f5f7] rounded-[18px] p-3.5 flex justify-between items-center active:scale-[0.98] cursor-pointer transition-transform">
                               <div className="flex items-center space-x-3.5">
                                 <TxIcon type={tx.iconType} desc={tx.desc}/>
@@ -642,9 +707,7 @@ export default function App() {
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <span className={`font-bold text-[15px] ${tx.amount>0?'text-[#00a651]':'text-[#222]'}`}>
-                                  {tx.amount>0?'+':''}£{Math.abs(tx.amount||0).toFixed(2)}
-                                </span>
+                                <span className={`font-bold text-[15px] ${tx.amount>0?'text-[#00a651]':'text-[#222]'}`}>{tx.amount>0?'+':''}£{Math.abs(tx.amount||0).toFixed(2)}</span>
                                 <ChevronRight size={16} className="text-gray-300"/>
                               </div>
                             </div>
@@ -658,9 +721,7 @@ export default function App() {
                 <div className="animate-fade-in bg-[#f8f8f8] min-h-full pb-10">
                   <header className="flex items-center justify-between px-6 pt-14 pb-3 bg-[#f8f8f8]">
                     <div className="flex items-center">
-                      <button onClick={()=>setActiveTopTab('Home')} className="flex flex-col items-center relative mr-3">
-                        <Home size={24} className="text-[#222]" strokeWidth={2.5}/>
-                      </button>
+                      <button onClick={()=>setActiveTopTab('Home')} className="flex flex-col items-center relative mr-3"><Home size={24} className="text-[#222]" strokeWidth={2.5}/></button>
                       <div className="w-px h-5 bg-gray-300 mr-4 opacity-50"></div>
                       <div className="flex space-x-5 text-[15px] font-bold text-gray-500">
                         <button onClick={()=>{setActiveNav('pay');setActivePaymentView('menu');}}>Pay</button>
@@ -669,7 +730,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <button onClick={()=>{setShowNotifications(true);}} className="relative text-[#222]">
+                      <button onClick={()=>setShowNotifications(true)} className="relative text-[#222]">
                         <Bell size={22} strokeWidth={2}/>
                         {unreadCount>0&&<span className="absolute -top-1 -right-1 w-4 h-4 bg-[#db0011] rounded-full text-white text-[9px] font-bold flex items-center justify-center">{unreadCount}</span>}
                       </button>
@@ -681,100 +742,38 @@ export default function App() {
                     <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wide mt-0.5">CHAN</p>
                     <div className="mt-4 relative flex items-center overflow-hidden w-full pl-6 pr-2">
                       <div className="w-[88%] shrink-0 h-[190px] rounded-2xl relative overflow-hidden shadow-xl" style={{background:'linear-gradient(135deg,#4a0000 0%,#200000 100%)'}}>
-                        <div className="absolute inset-0 opacity-20">
-                          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                            <polygon points="50,0 150,100 50,200 -50,100" fill="white"/>
-                            <polygon points="250,0 350,100 250,200 150,100" fill="white"/>
-                          </svg>
-                        </div>
+                        <div className="absolute inset-0 opacity-20"><svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><polygon points="50,0 150,100 50,200 -50,100" fill="white"/><polygon points="250,0 350,100 250,200 150,100" fill="white"/></svg></div>
                         <div className="absolute inset-0 bg-black/40 flex flex-col justify-between p-4 z-10">
                           <div className="flex justify-between items-start">
                             <div className="flex items-center space-x-1.5"><HSBCLogoSmall/><span className="text-white text-[12px] font-bold tracking-tight">HSBC UK</span></div>
                             <span className="text-white/80 text-[10px] font-semibold">Rewards Credit</span>
                           </div>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <SnowflakeSVG size={36} className="text-white mb-1"/>
-                            <span className="text-white text-[13px] font-bold">Frozen</span>
-                          </div>
-                          <div className="flex justify-end">
-                            <div className="flex">
-                              <div className="w-8 h-8 rounded-full bg-[#eb001b] opacity-90 z-20"></div>
-                              <div className="w-8 h-8 rounded-full bg-[#f79e1b] -ml-4 opacity-90 z-10"></div>
-                            </div>
-                          </div>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"><SnowflakeSVG size={36} className="text-white mb-1"/><span className="text-white text-[13px] font-bold">Frozen</span></div>
+                          <div className="flex justify-end"><div className="flex"><div className="w-8 h-8 rounded-full bg-[#eb001b] opacity-90 z-20"></div><div className="w-8 h-8 rounded-full bg-[#f79e1b] -ml-4 opacity-90 z-10"></div></div></div>
                         </div>
                       </div>
-                      <div className="w-[15%] shrink-0 h-[170px] bg-gray-300 rounded-l-2xl ml-4 relative overflow-hidden flex items-center opacity-60">
-                        <div className="absolute left-2 top-4"><HSBCLogoSmall/></div>
-                      </div>
+                      <div className="w-[15%] shrink-0 h-[170px] bg-gray-300 rounded-l-2xl ml-4 relative overflow-hidden flex items-center opacity-60"><div className="absolute left-2 top-4"><HSBCLogoSmall/></div></div>
                     </div>
-                    <div className="flex justify-center items-center space-x-3 mt-6">
-                      <ChevronLeft size={16} className="text-gray-300"/>
-                      <div className="w-4 h-1.5 rounded-full bg-[#222]"></div>
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
-                      <ChevronRight size={16} className="text-[#222]"/>
-                    </div>
+                    <div className="flex justify-center items-center space-x-3 mt-6"><ChevronLeft size={16} className="text-gray-300"/><div className="w-4 h-1.5 rounded-full bg-[#222]"></div><div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div><ChevronRight size={16} className="text-[#222]"/></div>
                   </div>
                   <div className="px-6 mt-6">
                     <div className="flex justify-between items-end mb-2">
-                      <div>
-                        <p className="text-[12px] font-bold text-[#222]">Current balance</p>
-                        <div className="text-[#222]">{formatBalance(creditAccount.balance)}</div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[12px] font-bold text-[#222]">Available credit</p>
-                        <div className="text-[#222]">
-                          <span className="text-[14px] mr-0.5 font-bold">£</span>
-                          <span className="text-xl font-bold">{availCreditFmt.int}</span>
-                          <span className="text-[14px] font-bold">.{availCreditFmt.frac}</span>
-                        </div>
-                      </div>
+                      <div><p className="text-[12px] font-bold text-[#222]">Current balance</p><div className="text-[#222]">{formatBalance(creditAccount.balance)}</div></div>
+                      <div className="text-right"><p className="text-[12px] font-bold text-[#222]">Available credit</p><div className="text-[#222]"><span className="text-[14px] mr-0.5 font-bold">£</span><span className="text-xl font-bold">{availCreditFmt.int}</span><span className="text-[14px] font-bold">.{availCreditFmt.frac}</span></div></div>
                     </div>
-                    <div className="w-full h-1.5 bg-gray-300 rounded-full mt-2 overflow-hidden">
-                      <div className="h-full bg-[#005EB8]" style={{width:`${progressPercent}%`}}></div>
-                    </div>
-                    <div className="flex justify-between items-center mt-2">
-                      <p className="text-[11px] text-gray-500 font-semibold">Updated 10 Mar 2026</p>
-                      <p className="text-[11px] text-[#222] font-bold">Credit limit £{creditLimitFmt.int}.{creditLimitFmt.frac}</p>
-                    </div>
+                    <div className="w-full h-1.5 bg-gray-300 rounded-full mt-2 overflow-hidden"><div className="h-full bg-[#005EB8]" style={{width:`${progressPercent}%`}}></div></div>
+                    <div className="flex justify-between items-center mt-2"><p className="text-[11px] text-gray-500 font-semibold">Updated 10 Mar 2026</p><p className="text-[11px] text-[#222] font-bold">Credit limit £{creditLimitFmt.int}.{creditLimitFmt.frac}</p></div>
                   </div>
                   <div className="flex justify-between px-6 mt-8">
-                    <button className="flex flex-col items-center w-20">
-                      <div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 relative text-[#db0011]">
-                        <CreditCardIcon size={20}/>
-                        <ArrowRightLeft size={12} className="absolute bottom-2 right-2 bg-white rounded-full p-[1px]"/>
-                      </div>
-                      <span className="text-[10px] text-[#222] font-bold text-center leading-tight">Balance and<br/>money transfers</span>
-                    </button>
-                    <button className="flex flex-col items-center w-20">
-                      <div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 text-[#db0011]">
-                        <Layers size={20}/>
-                      </div>
-                      <span className="text-[10px] text-[#222] font-bold text-center leading-tight">Instalment<br/>plans</span>
-                    </button>
-                    <button className="flex flex-col items-center w-20">
-                      <div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 relative text-[#db0011]">
-                        <CreditCardIcon size={20}/>
-                        <div className="absolute top-2 right-2 bg-white rounded-full p-[2px]"><SnowflakeSVG size={10} className="text-[#db0011]"/></div>
-                      </div>
-                      <span className="text-[10px] text-[#222] font-bold text-center leading-tight">Unfreeze card</span>
-                    </button>
-                    <button className="flex flex-col items-center w-16">
-                      <div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 text-[#222]">
-                        <MoreHorizontal size={20}/>
-                      </div>
-                      <span className="text-[10px] text-[#222] font-bold text-center leading-tight">More</span>
-                    </button>
+                    <button className="flex flex-col items-center w-20"><div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 relative text-[#db0011]"><CreditCardIcon size={20}/><ArrowRightLeft size={12} className="absolute bottom-2 right-2 bg-white rounded-full p-[1px]"/></div><span className="text-[10px] text-[#222] font-bold text-center leading-tight">Balance and<br/>money transfers</span></button>
+                    <button className="flex flex-col items-center w-20"><div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 text-[#db0011]"><Layers size={20}/></div><span className="text-[10px] text-[#222] font-bold text-center leading-tight">Instalment<br/>plans</span></button>
+                    <button className="flex flex-col items-center w-20"><div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 relative text-[#db0011]"><CreditCardIcon size={20}/><div className="absolute top-2 right-2 bg-white rounded-full p-[2px]"><SnowflakeSVG size={10} className="text-[#db0011]"/></div></div><span className="text-[10px] text-[#222] font-bold text-center leading-tight">Unfreeze card</span></button>
+                    <button className="flex flex-col items-center w-16"><div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 text-[#222]"><MoreHorizontal size={20}/></div><span className="text-[10px] text-[#222] font-bold text-center leading-tight">More</span></button>
                   </div>
                   <div className="px-6 mt-8">
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 relative overflow-hidden">
-                      <h3 className="flex items-center text-[#222] font-bold text-[14px] mb-4">
-                        <FileText size={18} className="text-[#db0011] mr-2"/>Credit card statement
-                      </h3>
-                      <div className="flex justify-between items-end pb-2">
-                        <div><p className="text-[11px] text-gray-500 font-bold mb-0.5">Due date</p><p className="text-[16px] font-bold text-[#222]">1 Apr</p></div>
-                        <div className="text-right"><p className="text-[11px] text-gray-500 font-bold mb-0.5">Statement balance</p><p className="text-[16px] font-bold text-[#222]">£500.00</p></div>
-                      </div>
+                      <h3 className="flex items-center text-[#222] font-bold text-[14px] mb-4"><FileText size={18} className="text-[#db0011] mr-2"/>Credit card statement</h3>
+                      <div className="flex justify-between items-end pb-2"><div><p className="text-[11px] text-gray-500 font-bold mb-0.5">Due date</p><p className="text-[16px] font-bold text-[#222]">1 Apr</p></div><div className="text-right"><p className="text-[11px] text-gray-500 font-bold mb-0.5">Statement balance</p><p className="text-[16px] font-bold text-[#222]">£500.00</p></div></div>
                       <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-gray-100 to-transparent"></div>
                     </div>
                   </div>
@@ -785,10 +784,7 @@ export default function App() {
                     <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-transparent to-black/80"></div>
                     <header className="relative z-10 flex items-center justify-between px-6 pt-14 pb-3">
                       <div className="flex items-center">
-                        <button className="flex flex-col items-center relative mr-3">
-                          <Home size={24} className="text-[#222]" strokeWidth={2.5}/>
-                          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-[#db0011]"></div>
-                        </button>
+                        <button className="flex flex-col items-center relative mr-3"><Home size={24} className="text-[#222]" strokeWidth={2.5}/><div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-[#db0011]"></div></button>
                         <div className="w-px h-5 bg-gray-400 mr-4 opacity-50"></div>
                         <div className="flex space-x-5 text-[15px] font-bold text-[#333]">
                           <button onClick={()=>{setActiveNav('pay');setActivePaymentView('menu');}}>Pay</button>
@@ -806,36 +802,19 @@ export default function App() {
                     </header>
                     <div className="absolute bottom-6 left-0 w-full flex justify-center space-x-3 px-4 z-10">
                       <button onClick={()=>{setActiveNav('pay');setActivePaymentView('form');}} className="flex flex-col items-center w-[75px]">
-                        <div className="w-[56px] h-[56px] bg-white rounded-full shadow-lg flex items-center justify-center relative mb-2">
-                          <User size={22} className="text-[#db0011]" strokeWidth={2.5}/>
-                          <div className="absolute top-0 right-0 w-[18px] h-[18px] bg-white rounded-full flex items-center justify-center shadow-sm">
-                            <div className="w-3.5 h-3.5 bg-[#db0011] rounded-full text-white flex items-center justify-center text-[8px] font-bold">↑</div>
-                          </div>
-                        </div>
+                        <div className="w-[56px] h-[56px] bg-white rounded-full shadow-lg flex items-center justify-center relative mb-2"><User size={22} className="text-[#db0011]" strokeWidth={2.5}/><div className="absolute top-0 right-0 w-[18px] h-[18px] bg-white rounded-full flex items-center justify-center shadow-sm"><div className="w-3.5 h-3.5 bg-[#db0011] rounded-full text-white flex items-center justify-center text-[8px] font-bold">↑</div></div></div>
                         <span className="text-[10px] text-white font-medium text-center leading-tight tracking-wide drop-shadow-md">Pay someone<br/>in the UK</span>
                       </button>
                       <button onClick={()=>{setActiveNav('pay');setActivePaymentView('menu');}} className="flex flex-col items-center w-[75px]">
-                        <div className="w-[56px] h-[56px] bg-white rounded-full shadow-lg flex items-center justify-center relative mb-2">
-                          <ArrowRightLeft size={20} className="text-[#db0011]" strokeWidth={2.5}/>
-                          <div className="absolute top-0 right-0 w-[18px] h-[18px] bg-white rounded-full flex items-center justify-center shadow-sm">
-                            <div className="w-3.5 h-3.5 bg-[#db0011] rounded-full text-white flex items-center justify-center text-[8px] font-bold">→</div>
-                          </div>
-                        </div>
+                        <div className="w-[56px] h-[56px] bg-white rounded-full shadow-lg flex items-center justify-center relative mb-2"><ArrowRightLeft size={20} className="text-[#db0011]" strokeWidth={2.5}/><div className="absolute top-0 right-0 w-[18px] h-[18px] bg-white rounded-full flex items-center justify-center shadow-sm"><div className="w-3.5 h-3.5 bg-[#db0011] rounded-full text-white flex items-center justify-center text-[8px] font-bold">→</div></div></div>
                         <span className="text-[10px] text-white font-medium text-center leading-tight tracking-wide drop-shadow-md">Transfer<br/>between...</span>
                       </button>
                       <button className="flex flex-col items-center w-[75px]">
-                        <div className="w-[56px] h-[56px] bg-white rounded-full shadow-lg flex items-center justify-center relative mb-2">
-                          <FileText size={20} className="text-[#db0011]" strokeWidth={2.5}/>
-                          <div className="absolute top-0 right-0 w-[18px] h-[18px] bg-white rounded-full flex items-center justify-center shadow-sm">
-                            <div className="w-3.5 h-3.5 bg-[#db0011] rounded-full text-white flex items-center justify-center text-[8px] font-bold">£</div>
-                          </div>
-                        </div>
+                        <div className="w-[56px] h-[56px] bg-white rounded-full shadow-lg flex items-center justify-center relative mb-2"><FileText size={20} className="text-[#db0011]" strokeWidth={2.5}/><div className="absolute top-0 right-0 w-[18px] h-[18px] bg-white rounded-full flex items-center justify-center shadow-sm"><div className="w-3.5 h-3.5 bg-[#db0011] rounded-full text-white flex items-center justify-center text-[8px] font-bold">£</div></div></div>
                         <span className="text-[10px] text-white font-medium text-center leading-tight tracking-wide drop-shadow-md">Pay a bill or<br/>company</span>
                       </button>
                       <button className="flex flex-col items-center w-[75px]">
-                        <div className="w-[56px] h-[56px] bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center mb-2 border border-white">
-                          <Plus size={26} className="text-[#222]" strokeWidth={2}/>
-                        </div>
+                        <div className="w-[56px] h-[56px] bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center mb-2 border border-white"><Plus size={26} className="text-[#222]" strokeWidth={2}/></div>
                         <span className="text-[10px] text-white font-medium text-center leading-tight tracking-wide drop-shadow-md">Edit</span>
                       </button>
                     </div>
@@ -848,17 +827,9 @@ export default function App() {
                     <div className="space-y-3">
                       {accounts.map(acc=>(
                         <div key={acc.id} onClick={()=>setSelectedAccountId(acc.id)} className="bg-white p-5 rounded-lg shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-gray-100 flex flex-col cursor-pointer active:bg-gray-50 transition-colors">
-                          <div className="flex justify-between items-start mb-4">
-                            <HSBCLogo/>
-                            <div className="flex space-x-3 text-gray-500"><Star size={20}/><MoreVertical size={20}/></div>
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-[#222] text-[15px]">{acc.name}</h3>
-                            <p className="text-[13px] text-gray-500 mt-0.5">{acc.details}</p>
-                          </div>
-                          <div className="flex justify-end mt-2">
-                            {showBalances?formatBalance(acc.balance):<span className="text-xl font-bold mt-1">***.**</span>}
-                          </div>
+                          <div className="flex justify-between items-start mb-4"><HSBCLogo/><div className="flex space-x-3 text-gray-500"><Star size={20}/><MoreVertical size={20}/></div></div>
+                          <div><h3 className="font-bold text-[#222] text-[15px]">{acc.name}</h3><p className="text-[13px] text-gray-500 mt-0.5">{acc.details}</p></div>
+                          <div className="flex justify-end mt-2">{showBalances?formatBalance(acc.balance):<span className="text-xl font-bold mt-1">***.**</span>}</div>
                         </div>
                       ))}
                     </div>
@@ -868,7 +839,7 @@ export default function App() {
             </div>
           )}
 
-          {/* PAY & TRANSFER */}
+          {/* PAY */}
           {activeNav === 'pay' && (
             <div className="animate-fade-in bg-white min-h-full flex flex-col">
               <header className="flex items-center justify-center px-6 pt-12 pb-4 bg-white border-b border-gray-100 z-40 sticky top-0">
@@ -887,102 +858,77 @@ export default function App() {
                   <div className="flex space-x-6 overflow-x-auto pb-6 hide-scrollbar">
                     {['Jane Doe','Rita Cantasora','Mac Ui Rudai','John Smith'].map((name,i)=>{
                       const initials=name.split(' ').map(n=>n[0]).join('');
-                      return (
-                        <div key={i} className="flex flex-col items-center flex-shrink-0 cursor-pointer">
-                          <div className="w-14 h-14 bg-[#333] text-white rounded-full flex items-center justify-center font-semibold text-lg mb-2 shadow-sm">{initials}</div>
-                          <p className="text-[11px] text-center w-16 text-gray-700 leading-tight">{name}</p>
-                        </div>
-                      );
+                      return (<div key={i} className="flex flex-col items-center flex-shrink-0 cursor-pointer"><div className="w-14 h-14 bg-[#333] text-white rounded-full flex items-center justify-center font-semibold text-lg mb-2 shadow-sm">{initials}</div><p className="text-[11px] text-center w-16 text-gray-700 leading-tight">{name}</p></div>);
                     })}
                   </div>
                   <h2 className="text-lg font-bold text-[#222] mt-4 mb-4">Send money</h2>
                   <div className="grid grid-cols-2 gap-3">
-                    <button className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50">
-                      <ArrowRightLeft size={24} className="text-[#db0011] mb-2"/>
-                      <span className="text-[12px] font-semibold text-[#222]">Transfer between your accounts</span>
-                    </button>
-                    <button onClick={()=>setActivePaymentView('form')} className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50">
-                      <User size={24} className="text-[#db0011] mb-2"/>
-                      <span className="text-[12px] font-semibold text-[#222]">Pay someone in the UK</span>
-                    </button>
-                    <button className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50">
-                      <FileText size={24} className="text-[#db0011] mb-2"/>
-                      <span className="text-[12px] font-semibold text-[#222]">Pay a bill or company</span>
-                    </button>
-                    <button className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50">
-                      <Globe size={24} className="text-[#db0011] mb-2"/>
-                      <span className="text-[12px] font-semibold text-[#222]">International payments</span>
-                    </button>
+                    <button className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50"><ArrowRightLeft size={24} className="text-[#db0011] mb-2"/><span className="text-[12px] font-semibold text-[#222]">Transfer between your accounts</span></button>
+                    <button onClick={()=>setActivePaymentView('form')} className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50"><User size={24} className="text-[#db0011] mb-2"/><span className="text-[12px] font-semibold text-[#222]">Pay someone in the UK</span></button>
+                    <button className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50"><FileText size={24} className="text-[#db0011] mb-2"/><span className="text-[12px] font-semibold text-[#222]">Pay a bill or company</span></button>
+                    <button className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center justify-center shadow-sm text-center h-28 active:bg-gray-50"><Globe size={24} className="text-[#db0011] mb-2"/><span className="text-[12px] font-semibold text-[#222]">International payments</span></button>
                   </div>
                 </div>
               ) : (
                 <div className="p-6 bg-white flex-1">
-                  <div className="flex items-center mb-6">
-                    <button onClick={()=>setActivePaymentView('menu')} className="mr-3 text-[#db0011] font-bold">Back</button>
-                    <h2 className="text-xl font-bold text-[#222] mx-auto">Pay someone</h2>
-                    <div className="w-12"></div>
-                  </div>
+                  <div className="flex items-center mb-6"><button onClick={()=>setActivePaymentView('menu')} className="mr-3 text-[#db0011] font-bold">Back</button><h2 className="text-xl font-bold text-[#222] mx-auto">Pay someone</h2><div className="w-12"></div></div>
                   <form onSubmit={handlePaymentSubmit} className="space-y-6">
                     <div className="bg-[#f8f8f8] border border-gray-200 rounded-lg p-4">
                       <p className="text-sm text-gray-500 font-medium mb-1">Paying from: <span className="text-[#222] font-bold">Current Account</span></p>
-                      <div className="flex justify-between items-end">
-                        <span className="text-xs text-gray-500">Balance after payment</span>
-                        <span className={`text-lg font-bold ${reactiveBalance<0?'text-[#db0011]':'text-[#222]'}`}>£{reactiveBalance.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-                      </div>
+                      <div className="flex justify-between items-end"><span className="text-xs text-gray-500">Balance after payment</span><span className={`text-lg font-bold ${reactiveBalance<0?'text-[#db0011]':'text-[#222]'}`}>£{reactiveBalance.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
                       {reactiveBalance<0&&<p className="text-[#db0011] text-xs mt-2 flex items-center"><AlertCircle size={12} className="mr-1"/> Insufficient funds</p>}
                     </div>
-                    <div>
-                      <label className="block text-[13px] font-bold text-gray-700 mb-1">Payee Name</label>
-                      <input type="text" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors bg-transparent" value={payeeName} onChange={e=>setPayeeName(e.target.value)}/>
-                    </div>
+                    <div><label className="block text-[13px] font-bold text-gray-700 mb-1">Payee Name</label><input type="text" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors bg-transparent" value={payeeName} onChange={e=>setPayeeName(e.target.value)}/></div>
                     <div className="flex space-x-4">
-                      <div className="flex-1">
-                        <label className="block text-[13px] font-bold text-gray-700 mb-1">Sort Code</label>
-                        <input type="text" placeholder="00-00-00" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors font-mono bg-transparent" value={sortCode} onChange={handleSortCodeChange}/>
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-[13px] font-bold text-gray-700 mb-1">Account Number</label>
-                        <input type="text" placeholder="12345678" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors font-mono bg-transparent" value={accountNumber} onChange={handleAccountNumChange}/>
-                      </div>
+                      <div className="flex-1"><label className="block text-[13px] font-bold text-gray-700 mb-1">Sort Code</label><input type="text" placeholder="00-00-00" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors font-mono bg-transparent" value={sortCode} onChange={handleSortCodeChange}/></div>
+                      <div className="flex-1"><label className="block text-[13px] font-bold text-gray-700 mb-1">Account Number</label><input type="text" placeholder="12345678" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors font-mono bg-transparent" value={accountNumber} onChange={handleAccountNumChange}/></div>
                     </div>
-                    <div>
-                      <label className="block text-[13px] font-bold text-gray-700 mb-1">Amount (£)</label>
-                      <div className="relative">
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-[#222] font-bold text-xl">£</span>
-                        <input type="number" step="0.01" className="w-full border-b-2 border-gray-300 rounded-none py-2 pl-6 text-[#222] font-bold text-xl focus:outline-none focus:border-[#db0011] transition-colors bg-transparent" value={payAmount} onChange={e=>setPayAmount(e.target.value)}/>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[13px] font-bold text-gray-700 mb-1">Reference</label>
-                      <input type="text" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors bg-transparent" value={payRef} onChange={e=>setPayRef(e.target.value)}/>
-                    </div>
+                    <div><label className="block text-[13px] font-bold text-gray-700 mb-1">Amount (£)</label><div className="relative"><span className="absolute left-0 top-1/2 -translate-y-1/2 text-[#222] font-bold text-xl">£</span><input type="number" step="0.01" className="w-full border-b-2 border-gray-300 rounded-none py-2 pl-6 text-[#222] font-bold text-xl focus:outline-none focus:border-[#db0011] transition-colors bg-transparent" value={payAmount} onChange={e=>setPayAmount(e.target.value)}/></div></div>
+                    <div><label className="block text-[13px] font-bold text-gray-700 mb-1">Reference</label><input type="text" className="w-full border-b-2 border-gray-300 rounded-none py-2 text-[#222] focus:outline-none focus:border-[#db0011] transition-colors bg-transparent" value={payRef} onChange={e=>setPayRef(e.target.value)}/></div>
                     {paymentError&&<div className="text-[#db0011] text-sm font-bold text-center">{paymentError}</div>}
-                    <div className="pt-4 pb-10">
-                      <button type="submit" disabled={reactiveBalance<0||!payAmount} className="w-full bg-[#db0011] disabled:bg-gray-300 text-white font-bold py-4 rounded-full shadow-md transition-colors">Continue</button>
-                    </div>
+                    <div className="pt-4 pb-10"><button type="submit" disabled={reactiveBalance<0||!payAmount} className="w-full bg-[#db0011] disabled:bg-gray-300 text-white font-bold py-4 rounded-full shadow-md transition-colors">Continue</button></div>
                   </form>
                 </div>
               )}
             </div>
           )}
 
-          {/* SUPPORT */}
+          {/* SUPPORT — upgraded chat */}
           {activeNav === 'support' && (
             <div className="animate-fade-in bg-[#f8f8f8] flex-1 flex flex-col h-full relative">
-              <div className="flex items-center justify-center px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-                <h1 className="font-bold text-[#222] text-lg flex items-center">
-                  <span className="w-2.5 h-2.5 bg-green-500 rounded-full mr-2"></span>HSBC Support
-                </h1>
+              <div className="flex items-center px-5 pt-12 pb-4 bg-[#db0011] sticky top-0 z-10 shadow-sm">
+                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center mr-3 shrink-0">
+                  <svg viewBox="0 0 200 100" className="w-5 h-4">
+                    <polygon points="0,50 50,0 50,100" fill="#db0011"/>
+                    <polygon points="200,50 150,0 150,100" fill="#db0011"/>
+                    <polygon points="50,0 150,0 100,50" fill="#db0011"/>
+                    <polygon points="50,100 150,100 100,50" fill="#db0011"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h1 className="font-bold text-white text-[16px]">HSBC Customer Service</h1>
+                  <p className="text-white/70 text-[11px]">Cora – AI Helper <span className="ml-1">🟢</span></p>
+                </div>
               </div>
+
               <div className="flex-1 overflow-y-auto p-5 space-y-4 pb-24">
                 <div className="text-center text-xs text-gray-400 my-4">Today</div>
                 {chatMessages.map(msg=>(
                   <div key={msg.id} className={`flex ${msg.sender==='user'?'justify-end':'justify-start'}`}>
-                    {msg.sender==='bot'&&<div className="w-8 h-8 rounded-full bg-[#db0011] flex items-center justify-center mr-2 shrink-0"><span className="text-white text-xs font-bold">H</span></div>}
-                    <div className={`max-w-[75%] rounded-2xl p-3.5 shadow-sm ${msg.sender==='user'?'bg-[#222] text-white rounded-br-sm':'bg-white text-[#222] border border-gray-200 rounded-bl-sm'}`}>
-                      <p className="text-[15px] leading-relaxed">{msg.text}</p>
-                      <p className="text-[10px] mt-2 text-right text-gray-400">{msg.time}</p>
-                    </div>
+                    {msg.sender==='bot' && msg.type !== 'payment_confirmation' && (
+                      <div className="w-8 h-8 rounded-full bg-[#db0011] flex items-center justify-center mr-2 shrink-0 mt-1"><span className="text-white text-xs font-bold">H</span></div>
+                    )}
+                    {msg.type === 'payment_confirmation' && msg.richData ? (
+                      <div className="flex items-start">
+                        <div className="w-8 h-8 rounded-full bg-[#db0011] flex items-center justify-center mr-2 shrink-0 mt-1"><span className="text-white text-xs font-bold">H</span></div>
+                        <PaymentConfirmationCard data={msg.richData}/>
+                      </div>
+                    ) : (
+                      <div className={`max-w-[78%] rounded-2xl p-3.5 shadow-sm ${msg.sender==='user'?'bg-[#db0011] text-white rounded-br-sm':'bg-white text-[#222] border border-gray-200 rounded-bl-sm'}`}>
+                        <p className="text-[14px] leading-relaxed whitespace-pre-line">{msg.text}</p>
+                        <p className="text-[10px] mt-2 text-right opacity-60">{msg.time}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isTyping&&(
@@ -997,10 +943,20 @@ export default function App() {
                 )}
                 <div ref={messagesEndRef} className="h-4"/>
               </div>
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-20">
+
+              {/* Quick reply suggestions */}
+              <div className="px-4 pb-2 flex space-x-2 overflow-x-auto hide-scrollbar">
+                {['Confirm my payment','Check my balance','Card queries','Recent transactions'].map(suggestion=>(
+                  <button key={suggestion} onClick={()=>{setChatInput(suggestion);}} className="shrink-0 bg-white border border-gray-200 rounded-full px-3 py-1.5 text-[12px] font-semibold text-[#222] whitespace-nowrap shadow-sm active:bg-gray-50">
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-4 bg-white border-t border-gray-100">
                 <form onSubmit={handleSendMessage} className="bg-[#f0f0f0] rounded-[2rem] flex items-center p-1.5">
                   <div className="flex-1 flex items-center px-3">
-                    <input type="text" placeholder="Message support..." className="w-full bg-transparent text-[#222] focus:outline-none placeholder-gray-500 py-2 text-[15px]" value={chatInput} onChange={e=>setChatInput(e.target.value)}/>
+                    <input type="text" placeholder="Type a message..." className="w-full bg-transparent text-[#222] focus:outline-none placeholder-gray-500 py-2 text-[15px]" value={chatInput} onChange={e=>setChatInput(e.target.value)}/>
                   </div>
                   <button type="submit" className={`p-2 rounded-full flex items-center justify-center transition-colors ${chatInput.trim()?'bg-[#db0011] text-white':'bg-transparent text-gray-400'}`} disabled={!chatInput.trim()}>
                     <ArrowRight size={20} strokeWidth={2.5}/>
@@ -1019,33 +975,12 @@ export default function App() {
           )}
         </main>
 
-        {/* BOTTOM NAV */}
         <nav className="absolute bottom-0 inset-x-0 bg-white border-t border-gray-200 pb-6 pt-2 px-2 z-50">
           <ul className="flex justify-between items-center">
-            <li className="flex-1">
-              <button onClick={()=>{setActiveNav('accounts');setSelectedAccountId(null);setSelectedTransaction(null);setActiveTopTab('Home');setSearchQuery('');}} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='accounts'?'text-[#db0011]':'text-[#666] hover:text-[#222]'}`}>
-                <Layers size={22} strokeWidth={activeNav==='accounts'?2.5:2}/>
-                <span className={`text-[10px] ${activeNav==='accounts'?'font-bold':'font-medium'}`}>Accounts</span>
-              </button>
-            </li>
-            <li className="flex-1">
-              <button onClick={()=>setActiveNav('pay')} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='pay'?'text-[#db0011]':'text-[#666] hover:text-[#222]'}`}>
-                <ArrowRightLeft size={22} strokeWidth={activeNav==='pay'?2.5:2}/>
-                <span className={`text-[10px] ${activeNav==='pay'?'font-bold':'font-medium'}`}>Pay & Transfer</span>
-              </button>
-            </li>
-            <li className="flex-1">
-              <button onClick={()=>setActiveNav('plan')} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='plan'?'text-[#db0011]':'text-[#666] hover:text-[#222]'}`}>
-                <BarChart2 size={22} strokeWidth={activeNav==='plan'?2.5:2}/>
-                <span className={`text-[10px] ${activeNav==='plan'?'font-bold':'font-medium'}`}>Plan</span>
-              </button>
-            </li>
-            <li className="flex-1">
-              <button onClick={()=>setActiveNav('support')} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='support'?'text-[#db0011]':'text-[#666] hover:text-[#222]'}`}>
-                <MessageSquare size={22} strokeWidth={activeNav==='support'?2.5:2}/>
-                <span className={`text-[10px] ${activeNav==='support'?'font-bold':'font-medium'}`}>Support</span>
-              </button>
-            </li>
+            <li className="flex-1"><button onClick={()=>{setActiveNav('accounts');setSelectedAccountId(null);setSelectedTransaction(null);setActiveTopTab('Home');setSearchQuery('');}} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='accounts'?'text-[#db0011]':'text-[#666]'}`}><Layers size={22} strokeWidth={activeNav==='accounts'?2.5:2}/><span className={`text-[10px] ${activeNav==='accounts'?'font-bold':'font-medium'}`}>Accounts</span></button></li>
+            <li className="flex-1"><button onClick={()=>setActiveNav('pay')} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='pay'?'text-[#db0011]':'text-[#666]'}`}><ArrowRightLeft size={22} strokeWidth={activeNav==='pay'?2.5:2}/><span className={`text-[10px] ${activeNav==='pay'?'font-bold':'font-medium'}`}>Pay & Transfer</span></button></li>
+            <li className="flex-1"><button onClick={()=>setActiveNav('plan')} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='plan'?'text-[#db0011]':'text-[#666]'}`}><BarChart2 size={22} strokeWidth={activeNav==='plan'?2.5:2}/><span className={`text-[10px] ${activeNav==='plan'?'font-bold':'font-medium'}`}>Plan</span></button></li>
+            <li className="flex-1"><button onClick={()=>setActiveNav('support')} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav==='support'?'text-[#db0011]':'text-[#666]'}`}><MessageSquare size={22} strokeWidth={activeNav==='support'?2.5:2}/><span className={`text-[10px] ${activeNav==='support'?'font-bold':'font-medium'}`}>Support</span></button></li>
           </ul>
         </nav>
 
