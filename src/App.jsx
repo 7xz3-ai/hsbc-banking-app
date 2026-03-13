@@ -1,39 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Home, 
-  Menu, 
-  Star, 
-  MoreVertical, 
-  Eye,
-  MessageSquare,
-  ArrowRight,
-  User,
-  ArrowRightLeft,
-  FileText,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle2,
-  AlertCircle,
-  Globe,
-  Layers,
-  BarChart2,
-  Search,
-  ArrowDown,
-  MoreHorizontal,
-  CreditCard as CreditCardIcon
+  Home, Menu, Star, MoreVertical, Eye, MessageSquare, ArrowRight, User,
+  ArrowRightLeft, FileText, Plus, ChevronLeft, ChevronRight, CheckCircle2,
+  AlertCircle, Globe, Layers, BarChart2, Search, ArrowDown, MoreHorizontal,
+  CreditCard as CreditCardIcon, ThumbsUp, ThumbsDown, PieChart, HelpCircle
 } from 'lucide-react';
 
 const SnowflakeSVG = ({ size = 24, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="2" y1="12" x2="22" y2="12"></line>
-    <line x1="12" y1="2" x2="12" y2="22"></line>
-    <line x1="20" y1="4" x2="4" y2="20"></line>
-    <line x1="4" y1="4" x2="20" y2="20"></line>
-    <line x1="16" y1="8" x2="20" y2="4"></line>
-    <line x1="8" y1="8" x2="4" y2="4"></line>
-    <line x1="16" y1="16" x2="20" y2="20"></line>
-    <line x1="8" y1="16" x2="4" y2="20"></line>
+    <line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line>
+    <line x1="20" y1="4" x2="4" y2="20"></line><line x1="4" y1="4" x2="20" y2="20"></line>
+    <line x1="16" y1="8" x2="20" y2="4"></line><line x1="8" y1="8" x2="4" y2="4"></line>
+    <line x1="16" y1="16" x2="20" y2="20"></line><line x1="8" y1="16" x2="4" y2="20"></line>
   </svg>
 );
 
@@ -73,47 +51,71 @@ const formatBalance = (amount) => {
 const formatLargeNumber = (num) => {
   const n = Number(num) || 0;
   const parts = Math.abs(n).toFixed(2).split('.');
-  return {
-    int: parseInt(parts[0]).toLocaleString('en-GB'),
-    frac: parts[1]
-  };
+  return { int: parseInt(parts[0]).toLocaleString('en-GB'), frac: parts[1] };
 };
 
-const TxIcon = ({ type, desc }) => {
+const getMerchantInfo = (iconType, desc) => {
+  const map = {
+    sainsburys: { ref: "SAINSBURYS SUPERMARKETS", website: "https://www.sainsburys.co.uk", method: "Contactless" },
+    tfl:        { ref: "TFL TRAVEL CHARGE LONDON", website: "https://www.tfl.gov.uk", method: "Contactless" },
+    deliveroo:  { ref: "DELIVEROO ORDER", website: "https://www.deliveroo.co.uk", method: "Online" },
+    adobe:      { ref: "ADOBE SYSTEMS INC", website: "https://www.adobe.com", method: "Direct Debit" },
+    nike:       { ref: "NIKE RETAIL UK LTD", website: "https://www.nike.com", method: "Contactless" },
+    uber:       { ref: "UBER TRIP CHARGE", website: "https://www.uber.com", method: "In-App" },
+    tesco:      { ref: "TESCO STORES LTD", website: "https://www.tesco.com", method: "Contactless" },
+    amazon:     { ref: "AMAZON.CO.UK RETAIL", website: "https://www.amazon.co.uk", method: "Online" },
+    spotify:    { ref: "SPOTIFY AB", website: "https://www.spotify.com", method: "Direct Debit" },
+    income:     { ref: `FASTER PAYMENT FROM ${(desc || '').toUpperCase()}`, website: null, method: "Bank Transfer" },
+    transfer:   { ref: `FASTER PAYMENT TO ${(desc || '').toUpperCase()}`, website: null, method: "Transfer" },
+  };
+  return map[iconType] || { ref: (desc || '').toUpperCase(), website: null, method: "Contactless" };
+};
+
+const TxIcon = ({ type, desc, size = "normal" }) => {
+  const cls = size === "large"
+    ? "w-20 h-20 rounded-[24px] text-4xl"
+    : "w-11 h-11 rounded-[12px] text-2xl";
+  const smCls = size === "large" ? "text-xl" : "text-[11px]";
+  const smCls2 = size === "large" ? "text-base" : "text-[10px]";
+
   switch(type) {
-    case 'sainsburys':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#e35205] text-white flex items-center justify-center font-bold text-2xl shadow-sm shrink-0">S</div>;
-    case 'adobe':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#ff0000] text-white flex items-center justify-center font-bold text-2xl shadow-sm shrink-0">A</div>;
-    case 'nike':
-      return <div className="w-11 h-11 rounded-[12px] bg-black text-white flex items-center justify-center font-serif italic font-bold text-xl shadow-sm shrink-0">N</div>;
-    case 'uber':
-      return <div className="w-11 h-11 rounded-[12px] bg-black text-white flex items-center justify-center font-medium text-[11px] shadow-sm shrink-0">Uber</div>;
-    case 'deliveroo':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#00ccbc] text-white flex items-center justify-center font-bold text-xl shadow-sm shrink-0">D</div>;
-    case 'tfl':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#0019a8] text-white flex items-center justify-center font-bold text-[14px] shadow-sm shrink-0">TfL</div>;
-    case 'amazon':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#232f3e] text-[#ff9900] flex items-center justify-center font-bold text-xl shadow-sm shrink-0">a</div>;
-    case 'spotify':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#1db954] text-white flex items-center justify-center font-bold text-[10px] shadow-sm shrink-0">Spotify</div>;
-    case 'tesco':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#00539f] text-white flex items-center justify-center font-bold text-[10px] shadow-sm shrink-0">TESCO</div>;
-    case 'income':
-      return <div className="w-11 h-11 rounded-[12px] bg-[#dcf4e6] text-[#00a651] flex items-center justify-center shadow-sm shrink-0"><ArrowDown size={22} strokeWidth={3}/></div>;
+    case 'sainsburys': return <div className={`${cls} bg-[#e35205] text-white flex items-center justify-center font-bold shadow-sm shrink-0`}>S</div>;
+    case 'adobe':      return <div className={`${cls} bg-[#ff0000] text-white flex items-center justify-center font-bold shadow-sm shrink-0`}>A</div>;
+    case 'nike':       return <div className={`${cls} bg-black text-white flex items-center justify-center font-serif italic font-bold shadow-sm shrink-0`}>N</div>;
+    case 'uber':       return <div className={`${cls} bg-black text-white flex items-center justify-center font-medium shadow-sm shrink-0 ${smCls}`}>Uber</div>;
+    case 'deliveroo':  return <div className={`${cls} bg-[#00ccbc] text-white flex items-center justify-center font-bold shadow-sm shrink-0`}>D</div>;
+    case 'tfl':        return <div className={`${cls} bg-[#0019a8] text-white flex items-center justify-center font-bold shadow-sm shrink-0 ${smCls2}`}>TfL</div>;
+    case 'amazon':     return <div className={`${cls} bg-[#232f3e] text-[#ff9900] flex items-center justify-center font-bold shadow-sm shrink-0`}>a</div>;
+    case 'spotify':    return <div className={`${cls} bg-[#1db954] text-white flex items-center justify-center font-bold shadow-sm shrink-0 ${smCls2}`}>Spotify</div>;
+    case 'tesco':      return <div className={`${cls} bg-[#00539f] text-white flex items-center justify-center font-bold shadow-sm shrink-0 ${smCls2}`}>TESCO</div>;
+    case 'income':     return <div className={`${cls} bg-[#dcf4e6] text-[#00a651] flex items-center justify-center shadow-sm shrink-0`}><ArrowDown size={size === "large" ? 36 : 22} strokeWidth={3}/></div>;
     default:
       const initials = (desc || 'T').split(' ').map(n => n[0]).filter(Boolean).join('').substring(0,2).toUpperCase();
-      return <div className="w-11 h-11 rounded-[12px] bg-[#e2e8f0] text-[#334155] flex items-center justify-center font-bold text-lg shadow-sm shrink-0">{initials}</div>;
+      return <div className={`${cls} bg-[#e2e8f0] text-[#334155] flex items-center justify-center font-bold shadow-sm shrink-0`}>{initials}</div>;
   }
+};
+
+const getDisplayDate = (dateStr) => {
+  if (dateStr === 'Today') {
+    const now = new Date();
+    return `${now.getDate()} ${now.toLocaleString('en-GB', { month: 'short' })} ${now.getFullYear()}`;
+  }
+  if (dateStr === 'Yesterday') {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'short' })} ${d.getFullYear()}`;
+  }
+  return `${dateStr} 2026`;
 };
 
 export default function App() {
   const [activeNav, setActiveNav] = useState('accounts');
   const [activeTopTab, setActiveTopTab] = useState('Home');
   const [selectedAccountId, setSelectedAccountId] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [activePaymentView, setActivePaymentView] = useState('menu');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [showBalances, setShowBalances] = useState(true);
+  const [merchantFeedback, setMerchantFeedback] = useState({});
 
   const [accounts, setAccounts] = useState([
     { id: 'acc_1', name: "Current Account", details: "40-47-59 12345678", balance: 21321.77, type: 'current' },
@@ -134,10 +136,7 @@ export default function App() {
 
   const groupedTransactions = (transactions || []).reduce((acc, tx) => {
     let group = acc.find(g => g.date === tx.date);
-    if (!group) {
-      group = { date: tx.date, items: [], total: 0 };
-      acc.push(group);
-    }
+    if (!group) { group = { date: tx.date, items: [], total: 0 }; acc.push(group); }
     group.items.push(tx);
     group.total += (Number(tx.amount) || 0);
     return acc;
@@ -149,7 +148,6 @@ export default function App() {
   const [payAmount, setPayAmount] = useState('');
   const [payRef, setPayRef] = useState('');
   const [paymentError, setPaymentError] = useState('');
-
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
@@ -180,73 +178,54 @@ export default function App() {
     if (sortCode.length !== 8) return setPaymentError('Please enter a valid 6-digit sort code.');
     if (accountNumber.length !== 8) return setPaymentError('Please enter a valid 8-digit account number.');
     if (isNaN(amountNum) || amountNum <= 0) return setPaymentError('Please enter a valid amount.');
-    const sourceAcc = accounts[0];
-    if (sourceAcc.balance < amountNum) return setPaymentError("You don't have enough funds to make this payment.");
+    if (accounts[0].balance < amountNum) return setPaymentError("You don't have enough funds to make this payment.");
     const newAccounts = [...accounts];
     newAccounts[0].balance -= amountNum;
     setAccounts(newAccounts);
     const now = new Date();
-    const newTx = {
-      id: Date.now().toString(),
-      date: 'Today',
+    setTransactions([{
+      id: Date.now().toString(), date: 'Today',
       time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-      desc: payeeName,
-      category: 'Transfer',
-      amount: -amountNum,
-      iconType: 'transfer'
-    };
-    setTransactions([newTx, ...transactions]);
+      desc: payeeName, category: 'Transfer', amount: -amountNum, iconType: 'transfer'
+    }, ...transactions]);
     setPaymentSuccess(true);
     setTimeout(() => {
-      setPaymentSuccess(false);
-      setActiveNav('accounts');
-      setActiveTopTab('Home');
-      setActivePaymentView('menu');
-      setPayeeName('');
-      setSortCode('');
-      setAccountNumber('');
-      setPayAmount('');
-      setPayRef('');
+      setPaymentSuccess(false); setActiveNav('accounts'); setActiveTopTab('Home');
+      setActivePaymentView('menu'); setPayeeName(''); setSortCode('');
+      setAccountNumber(''); setPayAmount(''); setPayRef('');
     }, 2500);
   };
 
   useEffect(() => {
-    if (activeNav === 'support') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (activeNav === 'support') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isTyping, activeNav]);
 
   const getBotResponse = (input) => {
-    const lowerInput = input.toLowerCase();
-    if (lowerInput.includes('payment') || lowerInput.includes('go through') || lowerInput.includes('gone through') || lowerInput.includes('sent') || lowerInput.includes('receive') || lowerInput.includes('transfer')) {
+    const l = input.toLowerCase();
+    if (l.includes('payment') || l.includes('go through') || l.includes('gone through') || l.includes('sent') || l.includes('receive') || l.includes('transfer'))
       return "Yes, I can confirm that the payment has gone through successfully. Please note that it can take up to 2 hours to reflect in the recipient's account.";
-    }
-    if (lowerInput.match(/\b(hi|hello|hey)\b/)) return "Hello! How can I help you with your banking today?";
-    if (lowerInput.includes('balance')) return `Your Current Account balance is £${accounts[0].balance.toLocaleString('en-GB', {minimumFractionDigits: 2})}.`;
+    if (l.match(/\b(hi|hello|hey)\b/)) return "Hello! How can I help you with your banking today?";
+    if (l.includes('balance')) return `Your Current Account balance is £${accounts[0].balance.toLocaleString('en-GB', {minimumFractionDigits: 2})}.`;
     return "I can help confirm if your recent payments have gone through, or answer general account questions. What would you like to check?";
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    const newUserMsg = { id: Date.now().toString(), sender: 'user', text: chatInput, time: timeString };
-    setChatMessages(prev => [...prev, newUserMsg]);
+    const timeString = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    setChatMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text: chatInput, time: timeString }]);
     const responseText = getBotResponse(chatInput);
     setChatInput('');
     setIsTyping(true);
     setTimeout(() => {
       setIsTyping(false);
-      const botMsg = { id: (Date.now() + 1).toString(), sender: 'bot', text: responseText, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
-      setChatMessages(prev => [...prev, botMsg]);
+      setChatMessages(prev => [...prev, { id: (Date.now()+1).toString(), sender: 'bot', text: responseText, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }]);
     }, 1200);
   };
 
   const sourceBalance = accounts[0].balance;
   const parsedAmount = parseFloat(payAmount) || 0;
   const reactiveBalance = sourceBalance - parsedAmount;
-
   const creditAccount = accounts[2] || { balance: 0, creditLimit: 3000 };
   const creditUsed = Math.abs(creditAccount.balance);
   const availableCredit = (creditAccount.creditLimit || 3000) - creditUsed;
@@ -254,13 +233,130 @@ export default function App() {
   const availCreditFmt = formatLargeNumber(availableCredit);
   const creditLimitFmt = formatLargeNumber(creditAccount.creditLimit);
 
+  // --- TRANSACTION DETAIL VIEW ---
+  const TransactionDetail = ({ tx, onBack }) => {
+    const merchant = getMerchantInfo(tx.iconType, tx.desc);
+    const feedback = merchantFeedback[tx.id];
+    const isIncome = tx.amount > 0;
+
+    return (
+      <div className="animate-fade-in bg-white min-h-full pb-10">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-14 pb-4 bg-white sticky top-0 z-40 border-b border-gray-100">
+          <button onClick={onBack} className="p-2 -ml-2 text-[#222] flex items-center">
+            <ChevronLeft size={28} strokeWidth={2.5} />
+          </button>
+          <h1 className="text-[18px] font-bold text-[#222]">Transaction details</h1>
+          <button className="p-2 text-[#222]"><Menu size={22} strokeWidth={2} /></button>
+        </div>
+
+        {/* Merchant hero */}
+        <div className="flex flex-col items-center pt-8 pb-6 px-6 border-b border-gray-100">
+          <TxIcon type={tx.iconType} desc={tx.desc} size="large" />
+          <h2 className="text-[22px] font-bold text-[#222] mt-4">{tx.desc}</h2>
+          <div className="flex items-baseline mt-2">
+            <span className="text-[18px] font-bold text-[#222] mr-1">{isIncome ? '+' : '-'} £</span>
+            <span className="text-[48px] font-bold text-[#222] leading-none">{Math.floor(Math.abs(tx.amount))}</span>
+            <span className="text-[22px] font-bold text-[#222]">.{Math.abs(tx.amount).toFixed(2).split('.')[1]}</span>
+          </div>
+          <p className="text-[14px] text-gray-500 mt-3 font-medium">
+            Completed {getDisplayDate(tx.date)}
+            <span className="mx-2 text-gray-300">|</span>
+            <span className="text-gray-500">{merchant.method}</span>
+          </p>
+        </div>
+
+        {/* Spending insights banner */}
+        <div className="mx-5 mt-4 bg-[#f8f8f8] rounded-2xl flex items-center justify-between px-4 py-4 cursor-pointer active:bg-gray-100">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm relative">
+              <PieChart size={20} className="text-[#db0011]" />
+            </div>
+            <div>
+              <p className="font-bold text-[#222] text-[15px]">Spending insights</p>
+              <p className="text-[12px] text-gray-500 mt-0.5">Get a better overview of your spending habits.</p>
+            </div>
+          </div>
+          <ArrowRight size={20} className="text-gray-400 shrink-0" />
+        </div>
+
+        {/* Details rows */}
+        <div className="mx-5 mt-5 space-y-0 rounded-2xl overflow-hidden border border-gray-100 bg-white shadow-sm">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <p className="text-[12px] text-gray-500 font-medium mb-1">Transaction reference</p>
+            <p className="text-[15px] font-bold text-[#222]">{merchant.ref}</p>
+          </div>
+
+          <div className="px-5 py-4 border-b border-gray-100">
+            <p className="text-[12px] text-gray-500 font-medium mb-1">Transaction date</p>
+            <p className="text-[15px] font-bold text-[#222]">{getDisplayDate(tx.date)}</p>
+          </div>
+
+          <div className="px-5 py-4 border-b border-gray-100">
+            <p className="text-[12px] text-gray-500 font-medium mb-1">Time</p>
+            <p className="text-[15px] font-bold text-[#222]">{tx.time}</p>
+          </div>
+
+          <div className="px-5 py-4 border-b border-gray-100">
+            <p className="text-[12px] text-gray-500 font-medium mb-1">Category</p>
+            <p className="text-[15px] font-bold text-[#222]">{tx.category}</p>
+          </div>
+
+          {merchant.website && (
+            <div className="px-5 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-[12px] text-gray-500 font-medium mb-1">Merchant's website</p>
+                <p className="text-[14px] font-bold text-[#222]">{merchant.website}</p>
+              </div>
+              <button className="flex items-center text-[12px] font-bold text-gray-500 space-x-1 border border-gray-200 rounded-lg px-3 py-1.5">
+                <span>Copy</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Merchant feedback — only for non-transfer, non-income */}
+        {tx.iconType !== 'transfer' && tx.iconType !== 'income' && (
+          <div className="mx-5 mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
+            <p className="text-[15px] font-bold text-[#222]">Are the merchant details correct?</p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setMerchantFeedback(prev => ({...prev, [tx.id]: 'up'}))}
+                className={`p-2 rounded-full transition-colors ${feedback === 'up' ? 'text-[#00a651]' : 'text-gray-400'}`}
+              >
+                <ThumbsUp size={22} strokeWidth={2} />
+              </button>
+              <button
+                onClick={() => setMerchantFeedback(prev => ({...prev, [tx.id]: 'down'}))}
+                className={`p-2 rounded-full transition-colors ${feedback === 'down' ? 'text-[#db0011]' : 'text-gray-400'}`}
+              >
+                <ThumbsDown size={22} strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Query this transaction */}
+        <div className="mx-5 mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between cursor-pointer active:bg-gray-50">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 rounded-full bg-[#fff0f0] flex items-center justify-center relative">
+              <FileText size={20} className="text-[#222]" />
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#db0011] rounded-full flex items-center justify-center">
+                <span className="text-white text-[10px] font-bold">!</span>
+              </div>
+            </div>
+            <p className="text-[15px] font-bold text-[#222]">Query this transaction</p>
+          </div>
+          <ArrowRight size={20} className="text-gray-400" />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex justify-center items-start sm:items-center min-h-screen bg-[#e5e5e5] sm:p-8 font-sans">
-
-      {/* On mobile: full screen. On desktop: phone frame */}
       <div className="w-full sm:max-w-[400px] h-screen sm:h-[850px] sm:max-h-[90vh] bg-[#f8f8f8] sm:rounded-[2.5rem] sm:shadow-2xl overflow-hidden flex flex-col relative sm:border-[12px] sm:border-[#222]">
 
-        {/* Notch — desktop only */}
         <div className="hidden sm:block absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"></div>
 
         <main className="flex-1 overflow-y-auto hide-scrollbar relative pb-20 flex flex-col bg-[#f8f8f8]">
@@ -268,10 +364,12 @@ export default function App() {
           {/* ACCOUNTS */}
           {activeNav === 'accounts' && (
             <div className="animate-fade-in flex-1">
-              {selectedAccountId ? (
+              {selectedTransaction ? (
+                <TransactionDetail tx={selectedTransaction} onBack={() => setSelectedTransaction(null)} />
+              ) : selectedAccountId ? (
                 <div className="animate-fade-in bg-white min-h-full pb-10">
                   <div className="flex items-center px-4 pt-14 pb-4 bg-white sticky top-0 z-40">
-                    <button onClick={() => setSelectedAccountId(null)} className="p-2 -ml-2 text-[#db0011] flex items-center transition-opacity hover:opacity-70">
+                    <button onClick={() => setSelectedAccountId(null)} className="p-2 -ml-2 text-[#db0011] flex items-center">
                       <ChevronLeft size={28} strokeWidth={3} />
                     </button>
                     <h1 className="text-[20px] font-bold text-[#222] ml-1">Transactions</h1>
@@ -291,7 +389,11 @@ export default function App() {
                         </div>
                         <div className="px-5 space-y-2">
                           {group.items.map(tx => (
-                            <div key={tx.id} className="bg-[#f4f5f7] rounded-[18px] p-3.5 flex justify-between items-center transition-transform active:scale-[0.98] cursor-pointer">
+                            <div
+                              key={tx.id}
+                              onClick={() => setSelectedTransaction(tx)}
+                              className="bg-[#f4f5f7] rounded-[18px] p-3.5 flex justify-between items-center active:scale-[0.98] cursor-pointer transition-transform"
+                            >
                               <div className="flex items-center space-x-3.5">
                                 <TxIcon type={tx.iconType} desc={tx.desc} />
                                 <div>
@@ -299,9 +401,12 @@ export default function App() {
                                   <p className="text-[13px] text-gray-500 mt-0.5 tracking-tight">{tx.time} • {tx.category}</p>
                                 </div>
                               </div>
-                              <span className={`font-bold text-[15px] ${tx.amount > 0 ? 'text-[#00a651]' : 'text-[#222]'}`}>
-                                {tx.amount > 0 ? '+' : ''}£{Math.abs(tx.amount || 0).toFixed(2)}
-                              </span>
+                              <div className="flex items-center space-x-2">
+                                <span className={`font-bold text-[15px] ${tx.amount > 0 ? 'text-[#00a651]' : 'text-[#222]'}`}>
+                                  {tx.amount > 0 ? '+' : ''}£{Math.abs(tx.amount || 0).toFixed(2)}
+                                </span>
+                                <ChevronRight size={16} className="text-gray-300" />
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -423,8 +528,7 @@ export default function App() {
                   <div className="px-6 mt-8">
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 relative overflow-hidden">
                       <h3 className="flex items-center text-[#222] font-bold text-[14px] mb-4">
-                        <FileText size={18} className="text-[#db0011] mr-2" />
-                        Credit card statement
+                        <FileText size={18} className="text-[#db0011] mr-2" />Credit card statement
                       </h3>
                       <div className="flex justify-between items-end pb-2">
                         <div>
@@ -442,10 +546,7 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  <div
-                    className="relative h-[300px] bg-cover bg-center"
-                    style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80")' }}
-                  >
+                  <div className="relative h-[300px] bg-cover bg-center" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80")' }}>
                     <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-transparent to-black/80"></div>
                     <header className="relative z-10 flex items-center justify-between px-6 pt-14 pb-3">
                       <div className="flex items-center">
@@ -507,17 +608,10 @@ export default function App() {
                     </div>
                     <div className="space-y-3">
                       {accounts.map(acc => (
-                        <div
-                          key={acc.id}
-                          onClick={() => setSelectedAccountId(acc.id)}
-                          className="bg-white p-5 rounded-lg shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-gray-100 flex flex-col cursor-pointer active:bg-gray-50 transition-colors"
-                        >
+                        <div key={acc.id} onClick={() => setSelectedAccountId(acc.id)} className="bg-white p-5 rounded-lg shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-gray-100 flex flex-col cursor-pointer active:bg-gray-50 transition-colors">
                           <div className="flex justify-between items-start mb-4">
                             <HSBCLogo />
-                            <div className="flex space-x-3 text-gray-500">
-                              <Star size={20} />
-                              <MoreVertical size={20} />
-                            </div>
+                            <div className="flex space-x-3 text-gray-500"><Star size={20} /><MoreVertical size={20} /></div>
                           </div>
                           <div>
                             <h3 className="font-bold text-[#222] text-[15px]">{acc.name}</h3>
@@ -596,9 +690,7 @@ export default function App() {
                         <span className="text-xs text-gray-500">Balance after payment</span>
                         <span className={`text-lg font-bold ${reactiveBalance < 0 ? 'text-[#db0011]' : 'text-[#222]'}`}>£{reactiveBalance.toLocaleString('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                       </div>
-                      {reactiveBalance < 0 && (
-                        <p className="text-[#db0011] text-xs mt-2 flex items-center"><AlertCircle size={12} className="mr-1" /> Insufficient funds</p>
-                      )}
+                      {reactiveBalance < 0 && <p className="text-[#db0011] text-xs mt-2 flex items-center"><AlertCircle size={12} className="mr-1" /> Insufficient funds</p>}
                     </div>
                     <div>
                       <label className="block text-[13px] font-bold text-gray-700 mb-1">Payee Name</label>
@@ -640,8 +732,7 @@ export default function App() {
             <div className="animate-fade-in bg-[#f8f8f8] flex-1 flex flex-col h-full relative">
               <div className="flex items-center justify-center px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
                 <h1 className="font-bold text-[#222] text-lg flex items-center">
-                  <span className="w-2.5 h-2.5 bg-green-500 rounded-full mr-2"></span>
-                  HSBC Support
+                  <span className="w-2.5 h-2.5 bg-green-500 rounded-full mr-2"></span>HSBC Support
                 </h1>
               </div>
               <div className="flex-1 overflow-y-auto p-5 space-y-4 pb-24">
@@ -690,11 +781,10 @@ export default function App() {
 
         </main>
 
-        {/* BOTTOM NAV */}
         <nav className="absolute bottom-0 inset-x-0 bg-white border-t border-gray-200 pb-6 pt-2 px-2 z-50">
           <ul className="flex justify-between items-center">
             <li className="flex-1">
-              <button onClick={() => { setActiveNav('accounts'); setSelectedAccountId(null); setActiveTopTab('Home'); }} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav === 'accounts' ? 'text-[#db0011]' : 'text-[#666] hover:text-[#222]'}`}>
+              <button onClick={() => { setActiveNav('accounts'); setSelectedAccountId(null); setSelectedTransaction(null); setActiveTopTab('Home'); }} className={`w-full flex flex-col items-center space-y-1 transition-colors ${activeNav === 'accounts' ? 'text-[#db0011]' : 'text-[#666] hover:text-[#222]'}`}>
                 <Layers size={22} strokeWidth={activeNav === 'accounts' ? 2.5 : 2} />
                 <span className={`text-[10px] ${activeNav === 'accounts' ? 'font-bold' : 'font-medium'}`}>Accounts</span>
               </button>
