@@ -108,9 +108,9 @@ const TxIcon = ({ type, desc }) => {
 };
 
 export default function App() {
-  const [activeNav, setActiveNav] = useState('accounts'); 
-  const [activeTopTab, setActiveTopTab] = useState('Home'); 
-  const [selectedAccountId, setSelectedAccountId] = useState(null); 
+  const [activeNav, setActiveNav] = useState('accounts');
+  const [activeTopTab, setActiveTopTab] = useState('Home');
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [activePaymentView, setActivePaymentView] = useState('menu');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [showBalances, setShowBalances] = useState(true);
@@ -255,13 +255,17 @@ export default function App() {
   const creditLimitFmt = formatLargeNumber(creditAccount.creditLimit);
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-[#e5e5e5] p-4 sm:p-8 font-sans">
-      <div className="w-full max-w-[400px] h-[850px] max-h-[90vh] bg-[#f8f8f8] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col relative border-[12px] border-[#222]">
-        
-        <div className="absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"></div>
+    <div className="flex justify-center items-start sm:items-center min-h-screen bg-[#e5e5e5] sm:p-8 font-sans">
+
+      {/* On mobile: full screen. On desktop: phone frame */}
+      <div className="w-full sm:max-w-[400px] h-screen sm:h-[850px] sm:max-h-[90vh] bg-[#f8f8f8] sm:rounded-[2.5rem] sm:shadow-2xl overflow-hidden flex flex-col relative sm:border-[12px] sm:border-[#222]">
+
+        {/* Notch — desktop only */}
+        <div className="hidden sm:block absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"></div>
 
         <main className="flex-1 overflow-y-auto hide-scrollbar relative pb-20 flex flex-col bg-[#f8f8f8]">
-          
+
+          {/* ACCOUNTS */}
           {activeNav === 'accounts' && (
             <div className="animate-fade-in flex-1">
               {selectedAccountId ? (
@@ -321,7 +325,6 @@ export default function App() {
                     </div>
                     <button className="text-[#222]"><Menu size={26} strokeWidth={2} /></button>
                   </header>
-
                   <div className="mt-4 text-center">
                     <h2 className="text-[14px] font-bold text-[#222]">Rewards Credit Card</h2>
                     <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wide mt-0.5">CHAN</p>
@@ -364,7 +367,6 @@ export default function App() {
                       <ChevronRight size={16} className="text-[#222]" />
                     </div>
                   </div>
-
                   <div className="px-6 mt-6">
                     <div className="flex justify-between items-end mb-2">
                       <div>
@@ -388,7 +390,6 @@ export default function App() {
                       <p className="text-[11px] text-[#222] font-bold">Credit limit £{creditLimitFmt.int}.{creditLimitFmt.frac}</p>
                     </div>
                   </div>
-
                   <div className="flex justify-between px-6 mt-8">
                     <button className="flex flex-col items-center w-20">
                       <div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm flex items-center justify-center mb-2 relative text-[#db0011]">
@@ -419,7 +420,6 @@ export default function App() {
                       <span className="text-[10px] text-[#222] font-bold text-center leading-tight">More</span>
                     </button>
                   </div>
-
                   <div className="px-6 mt-8">
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 relative overflow-hidden">
                       <h3 className="flex items-center text-[#222] font-bold text-[14px] mb-4">
@@ -462,7 +462,6 @@ export default function App() {
                       </div>
                       <button className="text-[#222]"><Menu size={26} strokeWidth={2} /></button>
                     </header>
-
                     <div className="absolute bottom-6 left-0 w-full flex justify-center space-x-3 px-4 z-10">
                       <button onClick={() => { setActiveNav('pay'); setActivePaymentView('form'); }} className="flex flex-col items-center w-[75px]">
                         <div className="w-[56px] h-[56px] bg-white rounded-full shadow-lg flex items-center justify-center relative mb-2">
@@ -499,7 +498,6 @@ export default function App() {
                       </button>
                     </div>
                   </div>
-
                   <div className="px-5 pt-6 pb-8 bg-[#f8f8f8]">
                     <div className="flex justify-between items-center mb-3 px-1">
                       <h2 className="text-[18px] font-semibold text-[#222]">Your products</h2>
@@ -537,6 +535,7 @@ export default function App() {
             </div>
           )}
 
+          {/* PAY & TRANSFER */}
           {activeNav === 'pay' && (
             <div className="animate-fade-in bg-white min-h-full flex flex-col">
               <header className="flex items-center justify-center px-6 pt-12 pb-4 bg-white border-b border-gray-100 z-40 sticky top-0">
@@ -554,7 +553,7 @@ export default function App() {
                   <h2 className="text-lg font-bold text-[#222] mb-4">Recent payees</h2>
                   <div className="flex space-x-6 overflow-x-auto pb-6 hide-scrollbar">
                     {['Jane Doe', 'Rita Cantasora', 'Mac Ui Rudai', 'John Smith'].map((name, i) => {
-                      const initials = name.split(' ').map(n=>n[0]).join('');
+                      const initials = name.split(' ').map(n => n[0]).join('');
                       return (
                         <div key={i} className="flex flex-col items-center flex-shrink-0 cursor-pointer">
                           <div className="w-14 h-14 bg-[#333] text-white rounded-full flex items-center justify-center font-semibold text-lg mb-2 shadow-sm">{initials}</div>
@@ -636,6 +635,7 @@ export default function App() {
             </div>
           )}
 
+          {/* SUPPORT */}
           {activeNav === 'support' && (
             <div className="animate-fade-in bg-[#f8f8f8] flex-1 flex flex-col h-full relative">
               <div className="flex items-center justify-center px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
@@ -680,14 +680,17 @@ export default function App() {
             </div>
           )}
 
+          {/* PLAN */}
           {activeNav === 'plan' && (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-[#f8f8f8] animate-fade-in flex-1">
               <BarChart2 size={48} className="mx-auto mb-4 opacity-50 text-[#db0011]" />
               <p className="font-semibold text-[#222]">Financial Planning tools coming soon</p>
             </div>
           )}
+
         </main>
 
+        {/* BOTTOM NAV */}
         <nav className="absolute bottom-0 inset-x-0 bg-white border-t border-gray-200 pb-6 pt-2 px-2 z-50">
           <ul className="flex justify-between items-center">
             <li className="flex-1">
