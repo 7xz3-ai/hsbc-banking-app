@@ -119,7 +119,6 @@ function usePersistedState(key, defaultValue) {
 
 export default function App() {
   const [appState,setAppState] = useState('login');
-  const [faceIdPhase,setFaceIdPhase] = useState('idle'); // idle | scanning | done
   const [pin,setPin] = useState('');
   const [pinError,setPinError] = useState(false);
   const [pinShake,setPinShake] = useState(false);
@@ -242,16 +241,6 @@ export default function App() {
       else{setPinShake(true);setTimeout(()=>{setPin('');setPinShake(false);setPinError(true);},600);setTimeout(()=>setPinError(false),2200);}
     }
   };
-
-  /* Face ID trigger — runs once when we arrive at login screen */
-  useEffect(() => {
-    if(appState==='login' && faceIdOn && faceIdPhase==='idle') {
-      setFaceIdPhase('scanning');
-      setTimeout(() => setFaceIdPhase('done'), 1500);
-    }
-    if(appState==='login' && !faceIdOn) setFaceIdPhase('done');
-    if(appState!=='login') setFaceIdPhase('idle');
-  }, [appState]); // eslint-disable-line
 
   const handleSortCode = (e)=>{
     let v=e.target.value.replace(/\D/g,'').slice(0,6);
@@ -489,34 +478,6 @@ export default function App() {
         <div className="w-full sm:max-w-[400px] h-screen sm:h-[850px] sm:max-h-[90vh] bg-[#db0011] sm:rounded-[2.5rem] sm:shadow-2xl overflow-hidden flex flex-col relative sm:border-[12px] sm:border-[#222]">
           <div className="hidden sm:block absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"/>
 
-          {/* ── Face ID scanning overlay ── */}
-          {faceIdPhase==='scanning'&&(
-            <div className="absolute inset-0 z-40 bg-black flex flex-col items-center justify-center space-y-8 animate-fade-in">
-              <HSBCLogoWhite/>
-              <div className="relative w-[160px] h-[160px]">
-                {/* Corner brackets — iOS Face ID style */}
-                {[['top-0 left-0','border-t-4 border-l-4 rounded-tl-2xl'],['top-0 right-0','border-t-4 border-r-4 rounded-tr-2xl'],['bottom-0 left-0','border-b-4 border-l-4 rounded-bl-2xl'],['bottom-0 right-0','border-b-4 border-r-4 rounded-br-2xl']].map(([pos,brd],i)=>(
-                  <div key={i} className={`absolute ${pos} w-10 h-10 border-white ${brd}`}/>
-                ))}
-                {/* Animated scan line */}
-                <div className="absolute left-3 right-3 h-[2px] bg-white/70 rounded-full animate-faceid-scan" style={{top:'50%'}}/>
-                {/* Face outline dots */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
-                    <ellipse cx="45" cy="55" rx="34" ry="42" stroke="white" strokeWidth="1.5" strokeOpacity="0.35"/>
-                    <circle cx="29" cy="44" r="4" fill="white" fillOpacity="0.5"/>
-                    <circle cx="61" cy="44" r="4" fill="white" fillOpacity="0.5"/>
-                    <path d="M33 68 Q45 78 57 68" stroke="white" strokeWidth="2" strokeOpacity="0.5" strokeLinecap="round" fill="none"/>
-                    <line x1="45" y1="52" x2="45" y2="62" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" strokeLinecap="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-white text-[17px] font-semibold">Face ID</p>
-                <p className="text-white/60 text-[13px] mt-1">Scanning…</p>
-              </div>
-            </div>
-          )}
           <div className="flex flex-col items-center justify-center flex-1 pt-16 pb-4">
             <HSBCLogoWhite/>
             <p className="text-white/80 text-[13px] font-semibold mt-2 tracking-widest uppercase">Mobile Banking</p>
@@ -942,8 +903,6 @@ export default function App() {
           @keyframes fadeIn{from{opacity:0}to{opacity:1}}
           @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-8px)}80%{transform:translateX(4px)}}
           .animate-shake{animation:shake 0.5s ease-in-out}
-          @keyframes faceidScan{0%{transform:translateY(-50px);opacity:0.3}50%{opacity:1}100%{transform:translateY(50px);opacity:0.3}}
-          .animate-faceid-scan{animation:faceidScan 1.2s ease-in-out infinite}
           input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
           input[type=number]{-moz-appearance:textfield}
         `}}/>
