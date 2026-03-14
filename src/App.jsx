@@ -132,6 +132,9 @@ export default function App() {
   const [showProfile,setShowProfile] = useState(false);
   const [showNotifs,setShowNotifs] = useState(false);
   const [showSO,setShowSO] = useState(false);
+  const [showDevMenu,setShowDevMenu] = useState(false);
+  const [versionTapCount,setVersionTapCount] = useState(0);
+  const [devBalance,setDevBalance] = useState('');
   const [cardFrozen,setCardFrozen] = useState(true);
   const [txFeedback,setTxFeedback] = useState({});
   const [txSearch,setTxSearch] = useState('');
@@ -545,11 +548,133 @@ export default function App() {
         <div className="hidden sm:block absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"/>
         {showSO&&<SOScreen/>}
 
+        {/* ── Developer Menu Modal ── */}
+        {showDevMenu&&(
+          <div className="absolute inset-0 z-[200] flex items-center justify-center px-6">
+            <div className="absolute inset-0 bg-black/60" onClick={()=>setShowDevMenu(false)}/>
+            <div className="relative w-full bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
+                <div>
+                  <p className="font-bold text-[#222] text-[16px]">🛠 Developer Menu</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Internal use only</p>
+                </div>
+                <button onClick={()=>setShowDevMenu(false)} className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                  <X size={16} className="text-gray-600"/>
+                </button>
+              </div>
+
+              {/* Balance editor */}
+              <div className="px-5 py-5">
+                <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-3">Edit Account Balance</p>
+
+                {/* Account selector pills */}
+                <div className="space-y-2 mb-4">
+                  {accounts.map((acc,i)=>(
+                    <div key={acc.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                      <div>
+                        <p className="font-bold text-[#222] text-[13px]">{acc.name}</p>
+                        <p className="text-[11px] text-gray-400">{acc.details.trim()}</p>
+                      </div>
+                      <p className={`font-bold text-[14px] ${acc.balance<0?'text-[#db0011]':'text-[#222]'}`}>
+                        £{acc.balance.toLocaleString('en-GB',{minimumFractionDigits:2})}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <label className="block text-[13px] font-bold text-gray-600 mb-2">
+                  Set Current Account balance (£)
+                </label>
+                <div className="flex space-x-3">
+                  <div className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 flex items-center focus-within:border-[#222] transition-colors bg-white">
+                    <span className="text-[16px] font-bold text-gray-400 mr-2">£</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder={accounts[0].balance.toFixed(2)}
+                      className="flex-1 text-[16px] font-bold text-[#222] focus:outline-none bg-transparent"
+                      value={devBalance}
+                      onChange={e=>setDevBalance(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    onClick={()=>{
+                      const newBal = parseFloat(devBalance);
+                      if(isNaN(newBal)) return;
+                      setAccounts(prev => prev.map((a,i) => i===0 ? {...a, balance: newBal} : a));
+                      setDevBalance('');
+                      setShowDevMenu(false);
+                    }}
+                    disabled={!devBalance||isNaN(parseFloat(devBalance))}
+                    className="bg-[#222] disabled:bg-gray-300 text-white font-bold px-5 py-3 rounded-xl text-[14px] transition-colors whitespace-nowrap"
+                  >
+                    Update
+                  </button>
+                </div>
+
+                {/* Quick top-up shortcuts */}
+                <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mt-5 mb-2">Quick top-up</p>
+                <div className="flex space-x-2">
+                  {[1000, 5000, 10000, 25000].map(amt=>(
+                    <button
+                      key={amt}
+                      onClick={()=>{
+                        setAccounts(prev => prev.map((a,i) => i===0 ? {...a, balance: a.balance+amt} : a));
+                        setShowDevMenu(false);
+                      }}
+                      className="flex-1 bg-[#f4f5f7] hover:bg-gray-200 text-[#222] font-bold py-2.5 rounded-xl text-[12px] transition-colors"
+                    >
+                      +£{(amt/1000).toFixed(0)}k
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reset transactions */}
+              <div className="px-5 pb-5 pt-0">
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wider mb-3">Danger Zone</p>
+                  <button
+                    onClick={()=>{
+                      ['hsbc_accounts','hsbc_transactions','hsbc_readNotifIds'].forEach(k=>localStorage.removeItem(k));
+                      window.location.reload();
+                    }}
+                    className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-3 rounded-xl text-[13px] active:bg-red-100"
+                  >
+                    Reset all data to defaults
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Notifications */}
         {showNotifs&&(<div className="absolute inset-0 z-[100] flex flex-col"><div className="absolute inset-0 bg-black/40" onClick={()=>setShowNotifs(false)}/><div className="relative mt-20 mx-3 bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in max-h-[75%] flex flex-col"><div className="flex items-center justify-between px-5 py-4 border-b border-gray-100"><h2 className="font-bold text-[#222] text-[17px]">Notifications</h2><button onClick={()=>{setShowNotifs(false);setReadIds(notifs.map(n=>n.id));}} className="text-[13px] font-bold text-[#db0011]">Mark all read</button></div><div className="overflow-y-auto hide-scrollbar">{notifs.map(n=>(<div key={n.id} onClick={()=>setReadIds(p=>[...new Set([...p,n.id])])} className={`flex items-start space-x-3 px-5 py-4 border-b border-gray-50 cursor-pointer ${!readIds.includes(n.id)?'bg-[#fff5f5]':'bg-white'}`}><div className="shrink-0 mt-0.5"><TxIcon type={n.iconType} desc={n.desc}/></div><div className="flex-1 min-w-0"><div className="flex items-center justify-between"><p className="font-bold text-[#222] text-[14px]">{n.title}</p>{!readIds.includes(n.id)&&<div className="w-2 h-2 rounded-full bg-[#db0011] ml-2 shrink-0"/>}</div><p className="text-[13px] text-gray-600 mt-0.5">{n.body}</p><p className="text-[11px] text-gray-400 mt-1">{n.time}</p></div></div>))}</div></div></div>)}
 
         {/* Profile */}
-        {showProfile&&(<div className="absolute inset-0 z-[90] bg-[#f8f8f8] flex flex-col animate-fade-in"><div className="flex items-center justify-between px-5 pt-14 pb-4 bg-white border-b border-gray-100"><button onClick={()=>setShowProfile(false)} className="p-2 -ml-2"><ChevronLeft size={26} strokeWidth={2.5} className="text-[#222]"/></button><h1 className="font-bold text-[#222] text-[17px]">Profile & Settings</h1><div className="w-10"/></div><div className="flex-1 overflow-y-auto hide-scrollbar pb-10"><div className="bg-white px-6 py-6 flex items-center space-x-4 border-b border-gray-100"><div className="w-16 h-16 rounded-full bg-[#db0011] flex items-center justify-center text-white text-[22px] font-bold">AC</div><div><p className="font-bold text-[#222] text-[18px]">Alex Chan</p><p className="text-[13px] text-gray-500 mt-0.5">Personal Banking Customer</p><p className="text-[12px] text-[#db0011] font-bold mt-1">Premier Account</p></div></div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Account Details</p>{[{l:'Sort code',v:'40-47-59'},{l:'Account number',v:'12345678'},{l:'Customer number',v:'••••••91'},{l:'Email',v:'a.chan@email.com'}].map((r,i,a)=>(<div key={r.l} className={`flex justify-between items-center px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><span className="text-[14px] text-gray-500">{r.l}</span><span className="text-[14px] font-bold text-[#222]">{r.v}</span></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security & Preferences</p>{[{l:'Transaction notifications',s:'Get alerts for every payment',v:notifOn,fn:setNotifOn},{l:'Face ID / Fingerprint',s:'Log in using biometrics',v:faceIdOn,fn:setFaceIdOn},{l:'Marketing preferences',s:'Receive offers and updates',v:marketingOn,fn:setMarketingOn}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><div><p className="text-[14px] font-bold text-[#222]">{r.l}</p><p className="text-[12px] text-gray-400 mt-0.5">{r.s}</p></div><button onClick={()=>r.fn(!r.v)} className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${r.v?'bg-[#db0011]':'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${r.v?'translate-x-7':'translate-x-1'}`}/></button></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security</p>{[{icon:<Lock size={18} className="text-[#db0011]"/>,l:'Change PIN'},{icon:<Smartphone size={18} className="text-[#db0011]"/>,l:'Manage devices'},{icon:<Shield size={18} className="text-[#db0011]"/>,l:'Security centre'}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-4 cursor-pointer active:bg-gray-50 ${i<a.length-1?'border-b border-gray-100':''}`}><div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full bg-[#fff0f0] flex items-center justify-center">{r.icon}</div><span className="text-[14px] font-bold text-[#222]">{r.l}</span></div><ChevronRight size={18} className="text-gray-300"/></div>))}</div><div className="mx-4 mt-5"><button onClick={()=>{setShowProfile(false);setAppState('login');setPin('');}} className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex items-center justify-center space-x-2 shadow-sm active:bg-gray-50"><LogOut size={18} className="text-[#db0011]"/><span className="text-[15px] font-bold text-[#db0011]">Log out</span></button></div><div className="mx-4 mt-3 mb-6"><button onClick={()=>{if(window.confirm('Reset all app data to defaults?')){['hsbc_accounts','hsbc_transactions','hsbc_readNotifIds'].forEach(k=>localStorage.removeItem(k));window.location.reload();}}} className="w-full bg-white border border-gray-100 rounded-2xl py-3.5 flex items-center justify-center active:bg-gray-50"><span className="text-[13px] text-gray-400 font-medium">Reset app data</span></button></div></div></div>)}
+        {showProfile&&(<div className="absolute inset-0 z-[90] bg-[#f8f8f8] flex flex-col animate-fade-in"><div className="flex items-center justify-between px-5 pt-14 pb-4 bg-white border-b border-gray-100"><button onClick={()=>setShowProfile(false)} className="p-2 -ml-2"><ChevronLeft size={26} strokeWidth={2.5} className="text-[#222]"/></button><h1 className="font-bold text-[#222] text-[17px]">Profile & Settings</h1><div className="w-10"/></div><div className="flex-1 overflow-y-auto hide-scrollbar pb-10"><div className="bg-white px-6 py-6 flex items-center space-x-4 border-b border-gray-100"><div className="w-16 h-16 rounded-full bg-[#db0011] flex items-center justify-center text-white text-[22px] font-bold">AC</div><div><p className="font-bold text-[#222] text-[18px]">Alex Chan</p><p className="text-[13px] text-gray-500 mt-0.5">Personal Banking Customer</p><p className="text-[12px] text-[#db0011] font-bold mt-1">Premier Account</p></div></div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Account Details</p>{[{l:'Sort code',v:'40-47-59'},{l:'Account number',v:'12345678'},{l:'Customer number',v:'••••••91'},{l:'Email',v:'a.chan@email.com'}].map((r,i,a)=>(<div key={r.l} className={`flex justify-between items-center px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><span className="text-[14px] text-gray-500">{r.l}</span><span className="text-[14px] font-bold text-[#222]">{r.v}</span></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security & Preferences</p>{[{l:'Transaction notifications',s:'Get alerts for every payment',v:notifOn,fn:setNotifOn},{l:'Face ID / Fingerprint',s:'Log in using biometrics',v:faceIdOn,fn:setFaceIdOn},{l:'Marketing preferences',s:'Receive offers and updates',v:marketingOn,fn:setMarketingOn}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><div><p className="text-[14px] font-bold text-[#222]">{r.l}</p><p className="text-[12px] text-gray-400 mt-0.5">{r.s}</p></div><button onClick={()=>r.fn(!r.v)} className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${r.v?'bg-[#db0011]':'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${r.v?'translate-x-7':'translate-x-1'}`}/></button></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security</p>{[{icon:<Lock size={18} className="text-[#db0011]"/>,l:'Change PIN'},{icon:<Smartphone size={18} className="text-[#db0011]"/>,l:'Manage devices'},{icon:<Shield size={18} className="text-[#db0011]"/>,l:'Security centre'}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-4 cursor-pointer active:bg-gray-50 ${i<a.length-1?'border-b border-gray-100':''}`}><div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full bg-[#fff0f0] flex items-center justify-center">{r.icon}</div><span className="text-[14px] font-bold text-[#222]">{r.l}</span></div><ChevronRight size={18} className="text-gray-300"/></div>))}</div><div className="mx-4 mt-5"><button onClick={()=>{setShowProfile(false);setAppState('login');setPin('');}} className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex items-center justify-center space-x-2 shadow-sm active:bg-gray-50"><LogOut size={18} className="text-[#db0011]"/><span className="text-[15px] font-bold text-[#db0011]">Log out</span></button></div><div className="mx-4 mt-3 mb-6"><button onClick={()=>{if(window.confirm('Reset all app data to defaults?')){['hsbc_accounts','hsbc_transactions','hsbc_readNotifIds'].forEach(k=>localStorage.removeItem(k));window.location.reload();}}} className="w-full bg-white border border-gray-100 rounded-2xl py-3.5 flex items-center justify-center active:bg-gray-50"><span className="text-[13px] text-gray-400 font-medium">Reset app data</span></button></div>
+              <div className="pb-8 flex justify-center">
+                <button
+                  onClick={()=>{
+                    const next = versionTapCount + 1;
+                    setVersionTapCount(next);
+                    if(next >= 5){
+                      setVersionTapCount(0);
+                      setDevBalance(accounts[0].balance.toFixed(2));
+                      setShowProfile(false);
+                      setShowDevMenu(true);
+                    }
+                  }}
+                  className="text-[12px] text-gray-300 select-none"
+                >
+                  App Version 1.0.4
+                  {versionTapCount>0&&versionTapCount<5&&(
+                    <span className="ml-2 text-[10px] text-gray-200">({5-versionTapCount} more)</span>
+                  )}
+                </button>
+              </div></div></div>)}
 
         <main className="flex-1 overflow-y-auto hide-scrollbar relative pb-20 flex flex-col bg-[#f8f8f8]">
 
