@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Home, Menu, Star, MoreVertical, Eye, MessageSquare, ArrowRight, User,
   ArrowRightLeft, FileText, Plus, ChevronLeft, ChevronRight, CheckCircle2,
@@ -102,8 +102,24 @@ const genPaymentId = (id) => 'PID'+(parseInt(id||'0',36)%10000000).toString().pa
 const genSortCode  = (id) => { const n=(parseInt(id||'0',36)%999999).toString().padStart(6,'0'); return `${n.slice(0,2)}-${n.slice(2,4)}-${n.slice(4)}`; };
 const genAccNum    = (id) => ((parseInt(id||'0',36)%99999999)+10000000).toString();
 
+/* ── localStorage-backed state hook ── */
+function usePersistedState(key, defaultValue) {
+  const [state, setState] = useState(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : defaultValue;
+    } catch { return defaultValue; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(state)); }
+    catch { /* storage full or unavailable */ }
+  }, [key, state]);
+  return [state, setState];
+}
+
 export default function App() {
   const [appState,setAppState] = useState('login');
+  const [faceIdPhase,setFaceIdPhase] = useState('idle'); // idle | scanning | done
   const [pin,setPin] = useState('');
   const [pinError,setPinError] = useState(false);
   const [pinShake,setPinShake] = useState(false);
@@ -124,13 +140,13 @@ export default function App() {
   const [faceIdOn,setFaceIdOn] = useState(true);
   const [marketingOn,setMarketingOn] = useState(false);
 
-  const [accounts,setAccounts] = useState([
+  const [accounts,setAccounts] = usePersistedState('hsbc_accounts',[
     { id:'acc_1', name:'Current Account',     details:'40-47-59  12345678',  balance:21321.77, type:'current', overdraft:350 },
     { id:'acc_2', name:'Online Bonus Saver',  details:'40-47-59  87654321',  balance:0.00,     type:'savings', overdraft:0 },
     { id:'acc_3', name:'Rewards Credit Card', details:'**** **** **** 5432', balance:-500.00,  type:'credit',  creditLimit:3000 },
   ]);
 
-  const [transactions,setTransactions] = useState([
+  const [transactions,setTransactions] = usePersistedState('hsbc_transactions',[
     { id:'tx_1', date:'Today',     time:'14:30', desc:"Sainsbury's",      category:'Groceries',    amount:-30.00,  iconType:'sainsburys', status:'pending',   sortCode:'40-47-10', accountNum:'12345678' },
     { id:'tx_2', date:'Today',     time:'08:15', desc:'TFL Travel Charge',category:'Travel',       amount:-6.80,   iconType:'tfl',        status:'pending',   sortCode:'20-00-00', accountNum:'56781234' },
     { id:'tx_3', date:'Yesterday', time:'19:45', desc:'Deliveroo',        category:'Dining',       amount:-24.50,  iconType:'deliveroo',  status:'completed', sortCode:'04-00-75', accountNum:'87654321' },
@@ -177,8 +193,8 @@ export default function App() {
   const [chatMsgs,setChatMsgs] = useState([
     { id:'m1', sender:'bot', type:'text', text:"Hi! I'm Cora, your HSBC digital assistant. How can I help you today?", time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) }
   ]);
-  // Notifications
-  const [readIds,setReadIds] = useState([]);
+  // Notifications — persisted
+  const [readIds,setReadIds] = usePersistedState('hsbc_readNotifIds',[]);
 
   /* Derived */
   const selectedAccount = accounts.find(a=>a.id===selectedAccountId);
@@ -215,6 +231,7 @@ export default function App() {
 
   /* PIN */
   const pressPin = (d) => {
+    navigator.vibrate?.(50); // haptic on every keypress
     if(pin.length>=4) return;
     const np=pin+d; setPin(np);
     if(np.length===4){
@@ -222,6 +239,16 @@ export default function App() {
       else{setPinShake(true);setTimeout(()=>{setPin('');setPinShake(false);setPinError(true);},600);setTimeout(()=>setPinError(false),2200);}
     }
   };
+
+  /* Face ID trigger — runs once when we arrive at login screen */
+  useEffect(() => {
+    if(appState==='login' && faceIdOn && faceIdPhase==='idle') {
+      setFaceIdPhase('scanning');
+      setTimeout(() => setFaceIdPhase('done'), 1500);
+    }
+    if(appState==='login' && !faceIdOn) setFaceIdPhase('done');
+    if(appState!=='login') setFaceIdPhase('idle');
+  }, [appState]); // eslint-disable-line
 
   const handleSortCode = (e)=>{
     let v=e.target.value.replace(/\D/g,'').slice(0,6);
@@ -253,6 +280,7 @@ export default function App() {
     const newTx={id:Date.now().toString(),date:'Today',time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),desc:payeeName,category:'Transfer',amount:-amt,iconType:'transfer',status:'completed',sortCode,accountNum};
     setAccounts(a=>{const n=[...a];n[0]={...n[0],balance:n[0].balance-amt};return n;});
     setTransactions(p=>[newTx,...p]);
+    navigator.vibrate?.([100,50,100]); // success haptic
     setPaySuccess(true);
     setTimeout(()=>{setPaySuccess(false);resetPayForm();setActiveNav('accounts');setPayView('menu');},2800);
   };
@@ -269,6 +297,7 @@ export default function App() {
     }));
     setTransactions(p=>[{id:Date.now().toString(),date:'Today',time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),desc:`Transfer to ${toAcc?.name}`,category:'Transfer',amount:-parsedXfer,iconType:'transfer',status:'completed',sortCode:'',accountNum:''},...p]);
     setXferSuccess(true);
+    navigator.vibrate?.([100,50,100]); // success haptic
     setTimeout(()=>{setXferSuccess(false);setPayView('menu');setXferAmount('');setXferRef('');},2500);
   };
 
@@ -456,6 +485,35 @@ export default function App() {
       <div className="flex justify-center items-start sm:items-center min-h-screen bg-[#e5e5e5] sm:p-8 font-sans">
         <div className="w-full sm:max-w-[400px] h-screen sm:h-[850px] sm:max-h-[90vh] bg-[#db0011] sm:rounded-[2.5rem] sm:shadow-2xl overflow-hidden flex flex-col relative sm:border-[12px] sm:border-[#222]">
           <div className="hidden sm:block absolute top-0 inset-x-0 h-6 bg-[#222] rounded-b-3xl w-40 mx-auto z-50"/>
+
+          {/* ── Face ID scanning overlay ── */}
+          {faceIdPhase==='scanning'&&(
+            <div className="absolute inset-0 z-40 bg-black flex flex-col items-center justify-center space-y-8 animate-fade-in">
+              <HSBCLogoWhite/>
+              <div className="relative w-[160px] h-[160px]">
+                {/* Corner brackets — iOS Face ID style */}
+                {[['top-0 left-0','border-t-4 border-l-4 rounded-tl-2xl'],['top-0 right-0','border-t-4 border-r-4 rounded-tr-2xl'],['bottom-0 left-0','border-b-4 border-l-4 rounded-bl-2xl'],['bottom-0 right-0','border-b-4 border-r-4 rounded-br-2xl']].map(([pos,brd],i)=>(
+                  <div key={i} className={`absolute ${pos} w-10 h-10 border-white ${brd}`}/>
+                ))}
+                {/* Animated scan line */}
+                <div className="absolute left-3 right-3 h-[2px] bg-white/70 rounded-full animate-faceid-scan" style={{top:'50%'}}/>
+                {/* Face outline dots */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
+                    <ellipse cx="45" cy="55" rx="34" ry="42" stroke="white" strokeWidth="1.5" strokeOpacity="0.35"/>
+                    <circle cx="29" cy="44" r="4" fill="white" fillOpacity="0.5"/>
+                    <circle cx="61" cy="44" r="4" fill="white" fillOpacity="0.5"/>
+                    <path d="M33 68 Q45 78 57 68" stroke="white" strokeWidth="2" strokeOpacity="0.5" strokeLinecap="round" fill="none"/>
+                    <line x1="45" y1="52" x2="45" y2="62" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-white text-[17px] font-semibold">Face ID</p>
+                <p className="text-white/60 text-[13px] mt-1">Scanning…</p>
+              </div>
+            </div>
+          )}
           <div className="flex flex-col items-center justify-center flex-1 pt-16 pb-4">
             <HSBCLogoWhite/>
             <p className="text-white/80 text-[13px] font-semibold mt-2 tracking-widest uppercase">Mobile Banking</p>
@@ -491,7 +549,7 @@ export default function App() {
         {showNotifs&&(<div className="absolute inset-0 z-[100] flex flex-col"><div className="absolute inset-0 bg-black/40" onClick={()=>setShowNotifs(false)}/><div className="relative mt-20 mx-3 bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in max-h-[75%] flex flex-col"><div className="flex items-center justify-between px-5 py-4 border-b border-gray-100"><h2 className="font-bold text-[#222] text-[17px]">Notifications</h2><button onClick={()=>{setShowNotifs(false);setReadIds(notifs.map(n=>n.id));}} className="text-[13px] font-bold text-[#db0011]">Mark all read</button></div><div className="overflow-y-auto hide-scrollbar">{notifs.map(n=>(<div key={n.id} onClick={()=>setReadIds(p=>[...new Set([...p,n.id])])} className={`flex items-start space-x-3 px-5 py-4 border-b border-gray-50 cursor-pointer ${!readIds.includes(n.id)?'bg-[#fff5f5]':'bg-white'}`}><div className="shrink-0 mt-0.5"><TxIcon type={n.iconType} desc={n.desc}/></div><div className="flex-1 min-w-0"><div className="flex items-center justify-between"><p className="font-bold text-[#222] text-[14px]">{n.title}</p>{!readIds.includes(n.id)&&<div className="w-2 h-2 rounded-full bg-[#db0011] ml-2 shrink-0"/>}</div><p className="text-[13px] text-gray-600 mt-0.5">{n.body}</p><p className="text-[11px] text-gray-400 mt-1">{n.time}</p></div></div>))}</div></div></div>)}
 
         {/* Profile */}
-        {showProfile&&(<div className="absolute inset-0 z-[90] bg-[#f8f8f8] flex flex-col animate-fade-in"><div className="flex items-center justify-between px-5 pt-14 pb-4 bg-white border-b border-gray-100"><button onClick={()=>setShowProfile(false)} className="p-2 -ml-2"><ChevronLeft size={26} strokeWidth={2.5} className="text-[#222]"/></button><h1 className="font-bold text-[#222] text-[17px]">Profile & Settings</h1><div className="w-10"/></div><div className="flex-1 overflow-y-auto hide-scrollbar pb-10"><div className="bg-white px-6 py-6 flex items-center space-x-4 border-b border-gray-100"><div className="w-16 h-16 rounded-full bg-[#db0011] flex items-center justify-center text-white text-[22px] font-bold">AC</div><div><p className="font-bold text-[#222] text-[18px]">Alex Chan</p><p className="text-[13px] text-gray-500 mt-0.5">Personal Banking Customer</p><p className="text-[12px] text-[#db0011] font-bold mt-1">Premier Account</p></div></div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Account Details</p>{[{l:'Sort code',v:'40-47-59'},{l:'Account number',v:'12345678'},{l:'Customer number',v:'••••••91'},{l:'Email',v:'a.chan@email.com'}].map((r,i,a)=>(<div key={r.l} className={`flex justify-between items-center px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><span className="text-[14px] text-gray-500">{r.l}</span><span className="text-[14px] font-bold text-[#222]">{r.v}</span></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security & Preferences</p>{[{l:'Transaction notifications',s:'Get alerts for every payment',v:notifOn,fn:setNotifOn},{l:'Face ID / Fingerprint',s:'Log in using biometrics',v:faceIdOn,fn:setFaceIdOn},{l:'Marketing preferences',s:'Receive offers and updates',v:marketingOn,fn:setMarketingOn}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><div><p className="text-[14px] font-bold text-[#222]">{r.l}</p><p className="text-[12px] text-gray-400 mt-0.5">{r.s}</p></div><button onClick={()=>r.fn(!r.v)} className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${r.v?'bg-[#db0011]':'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${r.v?'translate-x-7':'translate-x-1'}`}/></button></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security</p>{[{icon:<Lock size={18} className="text-[#db0011]"/>,l:'Change PIN'},{icon:<Smartphone size={18} className="text-[#db0011]"/>,l:'Manage devices'},{icon:<Shield size={18} className="text-[#db0011]"/>,l:'Security centre'}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-4 cursor-pointer active:bg-gray-50 ${i<a.length-1?'border-b border-gray-100':''}`}><div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full bg-[#fff0f0] flex items-center justify-center">{r.icon}</div><span className="text-[14px] font-bold text-[#222]">{r.l}</span></div><ChevronRight size={18} className="text-gray-300"/></div>))}</div><div className="mx-4 mt-5"><button onClick={()=>{setShowProfile(false);setAppState('login');setPin('');}} className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex items-center justify-center space-x-2 shadow-sm active:bg-gray-50"><LogOut size={18} className="text-[#db0011]"/><span className="text-[15px] font-bold text-[#db0011]">Log out</span></button></div></div></div>)}
+        {showProfile&&(<div className="absolute inset-0 z-[90] bg-[#f8f8f8] flex flex-col animate-fade-in"><div className="flex items-center justify-between px-5 pt-14 pb-4 bg-white border-b border-gray-100"><button onClick={()=>setShowProfile(false)} className="p-2 -ml-2"><ChevronLeft size={26} strokeWidth={2.5} className="text-[#222]"/></button><h1 className="font-bold text-[#222] text-[17px]">Profile & Settings</h1><div className="w-10"/></div><div className="flex-1 overflow-y-auto hide-scrollbar pb-10"><div className="bg-white px-6 py-6 flex items-center space-x-4 border-b border-gray-100"><div className="w-16 h-16 rounded-full bg-[#db0011] flex items-center justify-center text-white text-[22px] font-bold">AC</div><div><p className="font-bold text-[#222] text-[18px]">Alex Chan</p><p className="text-[13px] text-gray-500 mt-0.5">Personal Banking Customer</p><p className="text-[12px] text-[#db0011] font-bold mt-1">Premier Account</p></div></div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Account Details</p>{[{l:'Sort code',v:'40-47-59'},{l:'Account number',v:'12345678'},{l:'Customer number',v:'••••••91'},{l:'Email',v:'a.chan@email.com'}].map((r,i,a)=>(<div key={r.l} className={`flex justify-between items-center px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><span className="text-[14px] text-gray-500">{r.l}</span><span className="text-[14px] font-bold text-[#222]">{r.v}</span></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security & Preferences</p>{[{l:'Transaction notifications',s:'Get alerts for every payment',v:notifOn,fn:setNotifOn},{l:'Face ID / Fingerprint',s:'Log in using biometrics',v:faceIdOn,fn:setFaceIdOn},{l:'Marketing preferences',s:'Receive offers and updates',v:marketingOn,fn:setMarketingOn}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-3.5 ${i<a.length-1?'border-b border-gray-100':''}`}><div><p className="text-[14px] font-bold text-[#222]">{r.l}</p><p className="text-[12px] text-gray-400 mt-0.5">{r.s}</p></div><button onClick={()=>r.fn(!r.v)} className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${r.v?'bg-[#db0011]':'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${r.v?'translate-x-7':'translate-x-1'}`}/></button></div>))}</div><div className="mx-4 mt-5 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm"><p className="px-5 pt-4 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Security</p>{[{icon:<Lock size={18} className="text-[#db0011]"/>,l:'Change PIN'},{icon:<Smartphone size={18} className="text-[#db0011]"/>,l:'Manage devices'},{icon:<Shield size={18} className="text-[#db0011]"/>,l:'Security centre'}].map((r,i,a)=>(<div key={r.l} className={`flex items-center justify-between px-5 py-4 cursor-pointer active:bg-gray-50 ${i<a.length-1?'border-b border-gray-100':''}`}><div className="flex items-center space-x-3"><div className="w-8 h-8 rounded-full bg-[#fff0f0] flex items-center justify-center">{r.icon}</div><span className="text-[14px] font-bold text-[#222]">{r.l}</span></div><ChevronRight size={18} className="text-gray-300"/></div>))}</div><div className="mx-4 mt-5"><button onClick={()=>{setShowProfile(false);setAppState('login');setPin('');}} className="w-full bg-white border border-gray-200 rounded-2xl py-4 flex items-center justify-center space-x-2 shadow-sm active:bg-gray-50"><LogOut size={18} className="text-[#db0011]"/><span className="text-[15px] font-bold text-[#db0011]">Log out</span></button></div><div className="mx-4 mt-3 mb-6"><button onClick={()=>{if(window.confirm('Reset all app data to defaults?')){['hsbc_accounts','hsbc_transactions','hsbc_readNotifIds'].forEach(k=>localStorage.removeItem(k));window.location.reload();}}} className="w-full bg-white border border-gray-100 rounded-2xl py-3.5 flex items-center justify-center active:bg-gray-50"><span className="text-[13px] text-gray-400 font-medium">Reset app data</span></button></div></div></div>)}
 
         <main className="flex-1 overflow-y-auto hide-scrollbar relative pb-20 flex flex-col bg-[#f8f8f8]">
 
@@ -759,6 +817,8 @@ export default function App() {
           @keyframes fadeIn{from{opacity:0}to{opacity:1}}
           @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-8px)}80%{transform:translateX(4px)}}
           .animate-shake{animation:shake 0.5s ease-in-out}
+          @keyframes faceidScan{0%{transform:translateY(-50px);opacity:0.3}50%{opacity:1}100%{transform:translateY(50px);opacity:0.3}}
+          .animate-faceid-scan{animation:faceidScan 1.2s ease-in-out infinite}
           input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
           input[type=number]{-moz-appearance:textfield}
         `}}/>
